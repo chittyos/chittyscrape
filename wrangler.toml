@@ -1,4 +1,5 @@
 name = "chittyscrape"
+account_id = "0bc21e3a5a9de1a4cc843be9c3e98121"
 main = "src/index.ts"
 compatibility_date = "2026-01-15"
 compatibility_flags = ["nodejs_compat"]
@@ -10,7 +11,7 @@ binding = "BROWSER"
 
 [[kv_namespaces]]
 binding = "SCRAPE_KV"
-id = "PLACEHOLDER"
+id = "6d10f7d3727c46b781181d08555f2a7c"
 
-[[tail_consumers]]
-service = "chittytrack"
+# [[tail_consumers]]
+# service = "chittytrack"  # Uncomment when chittytrack worker is deployed
