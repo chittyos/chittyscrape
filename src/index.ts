@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { scrapeCookCountyDocket } from './scrapers/court-docket';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -32,8 +33,16 @@ app.get('/health', (c) => c.json({
   timestamp: new Date().toISOString(),
 }));
 
+// Court docket scraper
+app.post('/api/scrape/court-docket', async (c) => {
+  const { caseNumber } = await c.req.json<{ caseNumber: string }>();
+  if (!caseNumber) return c.json({ error: 'caseNumber required' }, 400);
+
+  const result = await scrapeCookCountyDocket(c.env.BROWSER, caseNumber);
+  return c.json(result);
+});
+
 // Scraper routes will be added in subsequent tasks
-// POST /api/scrape/court-docket
 // POST /api/scrape/cook-county-tax
 // POST /api/scrape/mr-cooper
 
