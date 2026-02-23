@@ -7,7 +7,17 @@ import { scrapeMrCooper } from './scrapers/mr-cooper';
 export type Env = {
   BROWSER: Fetcher;
   SCRAPE_KV: KVNamespace;
+  ENVIRONMENT?: string;
 };
+
+/** Timing-safe string comparison to prevent timing attacks on token validation */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  return crypto.subtle.timingSafeEqual(bufA, bufB);
+}
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -17,13 +27,16 @@ app.use('*', cors({
   allowHeaders: ['Authorization', 'Content-Type'],
 }));
 
-// Auth middleware — service token from KV
+// Auth middleware — service token from KV (timing-safe comparison)
 app.use('/api/*', async (c, next) => {
+  // Skip auth for status endpoint
+  if (c.req.path === '/api/v1/status') return next();
+
   const auth = c.req.header('Authorization');
   if (!auth?.startsWith('Bearer ')) return c.json({ error: 'Auth required' }, 401);
   const token = auth.slice(7);
   const valid = await c.env.SCRAPE_KV.get('scrape:service_token');
-  if (!valid || token !== valid) return c.json({ error: 'Invalid token' }, 403);
+  if (!valid || !timingSafeEqual(token, valid)) return c.json({ error: 'Invalid token' }, 403);
   return next();
 });
 
@@ -33,6 +46,15 @@ app.get('/health', (c) => c.json({
   service: 'chittyscrape',
   version: '0.1.0',
   timestamp: new Date().toISOString(),
+}));
+
+// Service status (unauthenticated) — ChittyOS standard
+app.get('/api/v1/status', (c) => c.json({
+  name: 'ChittyScrape',
+  version: '0.1.0',
+  environment: c.env.ENVIRONMENT || 'production',
+  canonicalUri: 'chittycanon://core/services/chittyscrape',
+  tier: 3,
 }));
 
 // Court docket scraper
