@@ -1,0 +1,7 @@
+# Code Ownership — Required reviewers for pull requests
+
+# Default owners
+* @CHITTYOS/developers
+
+# Protect compliance
+/CODEOWNERS @nickbianchi

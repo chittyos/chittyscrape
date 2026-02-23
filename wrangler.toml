@@ -6,6 +6,9 @@ compatibility_flags = ["nodejs_compat"]
 
 routes = [{ pattern = "scrape.chitty.cc", custom_domain = true }]
 
+[vars]
+ENVIRONMENT = "production"
+
 [browser]
 binding = "BROWSER"
 
@@ -13,5 +16,5 @@ binding = "BROWSER"
 binding = "SCRAPE_KV"
 id = "6d10f7d3727c46b781181d08555f2a7c"
 
-# [[tail_consumers]]
-# service = "chittytrack"  # Uncomment when chittytrack worker is deployed
+[[tail_consumers]]
+service = "chittytrack"

@@ -1,8 +1,8 @@
 {
   "name": "chittyscrape",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Stateless browser automation service for the ChittyOS ecosystem",
+  "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
@@ -12,10 +12,9 @@
     "type": "git",
     "url": "git+https://github.com/chittyos/chittyscrape.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": ["chittyos", "scraping", "cloudflare-workers"],
+  "author": "ChittyOS",
+  "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/chittyos/chittyscrape/issues"
   },
