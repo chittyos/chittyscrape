@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { scrapeCookCountyDocket } from './scrapers/court-docket';
+import { scrapeCookCountyTax } from './scrapers/cook-county-tax';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -42,8 +43,16 @@ app.post('/api/scrape/court-docket', async (c) => {
   return c.json(result);
 });
 
+// Cook County property tax scraper
+app.post('/api/scrape/cook-county-tax', async (c) => {
+  const { pin } = await c.req.json<{ pin: string }>();
+  if (!pin) return c.json({ error: 'pin required' }, 400);
+
+  const result = await scrapeCookCountyTax(c.env.BROWSER, pin);
+  return c.json(result);
+});
+
 // Scraper routes will be added in subsequent tasks
-// POST /api/scrape/cook-county-tax
 // POST /api/scrape/mr-cooper
 
 export default { fetch: app.fetch };
