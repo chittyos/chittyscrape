@@ -1,0 +1,32 @@
+{
+  "name": "chittyscrape",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chittyos/chittyscrape.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/chittyos/chittyscrape/issues"
+  },
+  "homepage": "https://github.com/chittyos/chittyscrape#readme",
+  "dependencies": {
+    "@cloudflare/puppeteer": "^1.0.6",
+    "hono": "^4.12.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260302.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.68.0"
+  }
+}

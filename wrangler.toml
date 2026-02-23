@@ -1,0 +1,16 @@
+name = "chittyscrape"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [{ pattern = "scrape.chitty.cc", custom_domain = true }]
+
+[browser]
+binding = "BROWSER"
+
+[[kv_namespaces]]
+binding = "SCRAPE_KV"
+id = "PLACEHOLDER"
+
+[[tail_consumers]]
+service = "chittytrack"
