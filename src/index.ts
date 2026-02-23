@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { scrapeCookCountyDocket } from './scrapers/court-docket';
 import { scrapeCookCountyTax } from './scrapers/cook-county-tax';
+import { scrapeMrCooper } from './scrapers/mr-cooper';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -52,7 +53,18 @@ app.post('/api/scrape/cook-county-tax', async (c) => {
   return c.json(result);
 });
 
-// Scraper routes will be added in subsequent tasks
-// POST /api/scrape/mr-cooper
+// Mr. Cooper mortgage portal scraper
+app.post('/api/scrape/mr-cooper', async (c) => {
+  const { property } = await c.req.json<{ property: string }>();
+  if (!property) return c.json({ error: 'property required' }, 400);
+
+  // Get credentials from KV
+  const username = await c.env.SCRAPE_KV.get('mrcooper:username');
+  const password = await c.env.SCRAPE_KV.get('mrcooper:password');
+  if (!username || !password) return c.json({ error: 'Mr. Cooper credentials not configured' }, 503);
+
+  const result = await scrapeMrCooper(c.env.BROWSER, { username, password }, property);
+  return c.json(result);
+});
 
 export default { fetch: app.fetch };
