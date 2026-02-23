@@ -1,43 +1,13 @@
 {
   "name": "chittyscrape",
-  "description": "Stateless browser automation service that scrapes portals lacking APIs (court dockets, property tax sites, mortgage servicer portals) and returns structured JSON",
+  "description": "Stateless browser automation service that scrapes portals lacking APIs and returns structured JSON",
   "version": "0.1.0",
-  "tier": 3,
-  "domain": "scrape.chitty.cc",
   "endpoints": [
-    {
-      "path": "/health",
-      "method": "GET",
-      "authentication": false,
-      "description": "Health check endpoint"
-    },
-    {
-      "path": "/api/v1/status",
-      "method": "GET",
-      "authentication": false,
-      "description": "Service status and metadata"
-    },
-    {
-      "path": "/api/scrape/court-docket",
-      "method": "POST",
-      "authentication": true,
-      "authType": "bearer",
-      "description": "Scrape court docket records"
-    },
-    {
-      "path": "/api/scrape/cook-county-tax",
-      "method": "POST",
-      "authentication": true,
-      "authType": "bearer",
-      "description": "Scrape Cook County property tax information"
-    },
-    {
-      "path": "/api/scrape/mr-cooper",
-      "method": "POST",
-      "authentication": true,
-      "authType": "bearer",
-      "description": "Scrape Mr. Cooper mortgage servicer portal"
-    }
+    "/health",
+    "/api/v1/status",
+    "/api/scrape/court-docket",
+    "/api/scrape/cook-county-tax",
+    "/api/scrape/mr-cooper"
   ],
   "schema": {
     "version": "1.0.0",
@@ -47,25 +17,10 @@
       "CourtDocket",
       "PropertyTaxRecord",
       "MortgageAccount"
-    ],
-    "relationships": [
-      "chittycanon://rel/scrapes",
-      "chittycanon://rel/sources"
     ]
   },
   "security": {
-    "authentication": "bearer",
-    "encryption": "https",
-    "tokenStorage": "cloudflare-kv",
-    "tokenComparison": "timing-safe"
-  },
-  "infrastructure": {
-    "platform": "cloudflare-workers",
-    "browserRendering": true,
-    "storage": "kv"
-  },
-  "dependencies": [
-    "chittycanon://core/services/auth",
-    "chittycanon://core/services/discovery"
-  ]
+    "authentication": "jwt",
+    "encryption": "https"
+  }
 }
