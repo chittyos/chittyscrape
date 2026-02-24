@@ -44,14 +44,19 @@ export function wrapResult<T>(
 /**
  * Try multiple CSS selectors and return the first one that matches an element.
  * Returns null if none match. Shared across all scrapers that need resilient selectors.
+ * Only suppresses CSS selector syntax errors -- propagates infrastructure failures.
  */
 export async function resolveSelector(page: any, selectors: string[]): Promise<string | null> {
   for (const selector of selectors) {
     try {
       const el = await page.$(selector);
       if (el) return selector;
-    } catch {
-      // Some selectors (like :has-text) may not be valid CSS -- skip
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('is not a valid selector') || msg.includes('Failed to execute')) {
+        continue;
+      }
+      throw err;
     }
   }
   return null;

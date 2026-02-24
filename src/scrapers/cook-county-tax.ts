@@ -259,6 +259,9 @@ export const cookCountyTaxScraper: ScraperModule<{ pin: string }, TaxResult['dat
     requiresAuth: false,
   },
   async execute(browser, env, input) {
+    if (!input?.pin?.trim()) {
+      return wrapResult('cook-county-tax', false, undefined, 'pin is required');
+    }
     const result = await scrapeCookCountyTax(browser, input.pin);
     return wrapResult('cook-county-tax', result.success, result.data, result.error);
   },

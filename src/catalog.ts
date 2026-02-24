@@ -4,6 +4,9 @@ export class ScraperCatalog {
   private scrapers = new Map<string, ScraperModule>();
 
   register(scraper: ScraperModule): void {
+    if (this.scrapers.has(scraper.meta.id)) {
+      throw new Error(`Scraper "${scraper.meta.id}" is already registered`);
+    }
     this.scrapers.set(scraper.meta.id, scraper);
   }
 
@@ -12,7 +15,7 @@ export class ScraperCatalog {
   }
 
   list(): ScraperMeta[] {
-    return Array.from(this.scrapers.values()).map((s) => s.meta);
+    return Array.from(this.scrapers.values()).map((s) => ({ ...s.meta }));
   }
 
   listByCategory(category: ScraperCategory): ScraperMeta[] {

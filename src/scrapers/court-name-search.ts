@@ -15,10 +15,11 @@ export interface CourtNameSearchData {
   searchName: string;
   totalResults: number;
   cases: CaseMatch[];
+  source: 'api' | 'html' | 'none';
 }
 
 export const courtNameSearchScraper: ScraperModule<
-  { name: string; divisions?: string[] },
+  { name: string },
   CourtNameSearchData
 > = {
   meta: {
@@ -43,6 +44,7 @@ export const courtNameSearchScraper: ScraperModule<
       await page.setViewport({ width: 1280, height: 800 });
 
       const allCases: CaseMatch[] = [];
+      let source: 'api' | 'html' | 'none' = 'none';
 
       // Cook County Circuit Clerk case search -- try API first
       const apiUrl = `https://casesearch.cookcountyclerkofcourt.org/CivilCaseSearchAPI/api/CivilCases?LastName=${encodeURIComponent(searchName)}`;
@@ -60,10 +62,17 @@ export const courtNameSearchScraper: ScraperModule<
       try {
         apiData = JSON.parse(bodyText);
       } catch {
+        console.error(`Court name search API returned non-JSON for "${searchName}"`);
+        apiData = null;
+      }
+
+      if (apiData && !Array.isArray(apiData)) {
+        console.error(`Court name search API returned unexpected shape for "${searchName}"`);
         apiData = null;
       }
 
       if (apiData && Array.isArray(apiData)) {
+        source = 'api';
         for (const item of apiData) {
           allCases.push({
             caseNumber: item.caseNumber || item.caseId || '',
@@ -79,6 +88,8 @@ export const courtNameSearchScraper: ScraperModule<
 
       // If API didn't return results, try the HTML search page
       if (allCases.length === 0) {
+        source = 'html';
+        console.warn(`Court name search API returned no results for "${searchName}", falling back to HTML scraping`);
         await page.goto('https://casesearch.cookcountyclerkofcourt.org/CivilCaseSearchAPI.html', {
           waitUntil: 'networkidle0',
           timeout: 20000,
@@ -91,7 +102,13 @@ export const courtNameSearchScraper: ScraperModule<
           const searchBtn = await page.$('button[type="submit"], #searchButton, .search-btn, input[type="submit"]');
           if (searchBtn) {
             await searchBtn.click();
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => {});
+            try {
+              await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 });
+            } catch (navErr: any) {
+              if (!navErr.message?.includes('timeout')) {
+                console.error(`HTML search navigation failed: ${navErr.message}`);
+              }
+            }
             await new Promise((r) => setTimeout(r, 2000));
 
             const htmlCases = await page.evaluate(() => {
@@ -138,12 +155,15 @@ export const courtNameSearchScraper: ScraperModule<
         searchName,
         totalResults: allCases.length,
         cases: allCases,
+        source: allCases.length > 0 ? source : 'none',
       });
     } catch (err: any) {
-      return wrapResult<CourtNameSearchData>('court-name-search', false, undefined, err.message);
+      const message = err?.message || String(err);
+      console.error(`Scraper court-name-search failed: ${message}`, err?.stack);
+      return wrapResult<CourtNameSearchData>('court-name-search', false, undefined, message);
     } finally {
-      if (page) await page.close().catch(() => {});
-      if (browserInstance) await browserInstance.close().catch(() => {});
+      if (page) await page.close().catch((e: any) => console.warn(`Failed to close page: ${e.message}`));
+      if (browserInstance) await browserInstance.close().catch((e: any) => console.warn(`Failed to close browser: ${e.message}`));
     }
   },
 };

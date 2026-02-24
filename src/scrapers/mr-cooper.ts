@@ -403,6 +403,9 @@ export const mrCooperScraper: ScraperModule<{ property: string }, MrCooperResult
     credentialKeys: ['mrcooper:username', 'mrcooper:password'],
   },
   async execute(browser, env, input) {
+    if (!input?.property?.trim()) {
+      return wrapResult('mr-cooper', false, undefined, 'property is required');
+    }
     const username = await env.SCRAPE_KV.get('mrcooper:username');
     const password = await env.SCRAPE_KV.get('mrcooper:password');
     if (!username || !password) {

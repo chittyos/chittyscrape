@@ -47,4 +47,16 @@ describe('ScraperCatalog', () => {
     expect(utils).toHaveLength(1);
     expect(utils[0].id).toBe('gas');
   });
+
+  it('throws on duplicate registration', () => {
+    catalog.register(makeFakeScraper('dup'));
+    expect(() => catalog.register(makeFakeScraper('dup'))).toThrow('already registered');
+  });
+
+  it('list() returns copies that do not mutate catalog internals', () => {
+    catalog.register(makeFakeScraper('original'));
+    const list = catalog.list();
+    list[0].id = 'hacked';
+    expect(catalog.get('original')!.meta.id).toBe('original');
+  });
 });

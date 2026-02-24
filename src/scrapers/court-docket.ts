@@ -95,6 +95,9 @@ export const courtDocketScraper: ScraperModule<{ caseNumber: string }, DocketRes
     requiresAuth: false,
   },
   async execute(browser, env, input) {
+    if (!input?.caseNumber?.trim()) {
+      return wrapResult('court-docket', false, undefined, 'caseNumber is required');
+    }
     const result = await scrapeCookCountyDocket(browser, input.caseNumber);
     return wrapResult('court-docket', result.success, result.data, result.error);
   },

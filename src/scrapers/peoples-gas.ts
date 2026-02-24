@@ -5,7 +5,6 @@ export interface PeoplesGasData {
   accountNumber: string;
   currentBalance: number;
   dueDate?: string;
-  lastPayment?: { date: string; amount: number };
   billingHistory: Array<{ date: string; amount: number; therms?: number }>;
 }
 
@@ -20,6 +19,10 @@ export const peoplesGasScraper: ScraperModule<{ accountNumber: string }, Peoples
   },
 
   async execute(browser, env, input) {
+    if (!input?.accountNumber?.trim()) {
+      return wrapResult<PeoplesGasData>('peoples-gas', false, undefined, 'accountNumber is required');
+    }
+
     const username = await env.SCRAPE_KV.get('peoplesgas:username');
     const password = await env.SCRAPE_KV.get('peoplesgas:password');
     if (!username || !password) {
@@ -60,7 +63,13 @@ export const peoplesGasScraper: ScraperModule<{ accountNumber: string }, Peoples
       if (!submitSel) return wrapResult<PeoplesGasData>('peoples-gas', false, undefined, 'Could not find submit button');
       await page.click(submitSel);
 
-      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 }).catch(() => {});
+      try {
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+      } catch (navErr: any) {
+        if (!navErr.message?.includes('timeout')) {
+          return wrapResult<PeoplesGasData>('peoples-gas', false, undefined, `Navigation failed after login: ${navErr.message}`);
+        }
+      }
       await new Promise((r) => setTimeout(r, 3000));
 
       // Check login failure
@@ -139,10 +148,12 @@ export const peoplesGasScraper: ScraperModule<{ accountNumber: string }, Peoples
 
       return wrapResult('peoples-gas', true, data as PeoplesGasData);
     } catch (err: any) {
-      return wrapResult<PeoplesGasData>('peoples-gas', false, undefined, err.message);
+      const message = err?.message || String(err);
+      console.error(`Scraper peoples-gas failed: ${message}`, err?.stack);
+      return wrapResult<PeoplesGasData>('peoples-gas', false, undefined, message);
     } finally {
-      if (page) await page.close().catch(() => {});
-      if (browserInstance) await browserInstance.close().catch(() => {});
+      if (page) await page.close().catch((e: any) => console.warn(`Failed to close page: ${e.message}`));
+      if (browserInstance) await browserInstance.close().catch((e: any) => console.warn(`Failed to close browser: ${e.message}`));
     }
   },
 };
