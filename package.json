@@ -6,13 +6,19 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/chittyos/chittyscrape.git"
   },
-  "keywords": ["chittyos", "scraping", "cloudflare-workers"],
+  "keywords": [
+    "chittyos",
+    "scraping",
+    "cloudflare-workers"
+  ],
   "author": "ChittyOS",
   "license": "UNLICENSED",
   "bugs": {
@@ -24,8 +30,10 @@
     "hono": "^4.12.2"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.16",
     "@cloudflare/workers-types": "^4.20260302.0",
     "typescript": "^5.9.3",
+    "vitest": "~3.2.0",
     "wrangler": "^4.68.0"
   }
 }
