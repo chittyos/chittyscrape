@@ -2,7 +2,7 @@
 uri: chittycanon://docs/ops/summary/chittyscrape
 namespace: chittycanon://docs/ops
 type: summary
-version: 1.0.0
+version: 1.1.0
 status: DRAFT
 registered_with: chittycanon://core/services/canon
 title: "ChittyScrape"
@@ -16,24 +16,28 @@ visibility: PUBLIC
 
 ## What It Does
 
-Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, mortgage servicer portals — and returns structured JSON to calling services.
+Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers — and returns structured JSON to calling services. Catalog-driven architecture: scrapers self-register and are discoverable via capabilities endpoint.
 
 ## Architecture
 
-Cloudflare Worker deployed at scrape.chitty.cc with Browser Rendering binding for headless Puppeteer sessions. Authenticated via Bearer token from KV. Called by ChittyCommand via bridge routes and cron schedules.
+Cloudflare Worker at scrape.chitty.cc with Browser Rendering binding for headless Puppeteer sessions. Catalog-driven generic route (`POST /api/scrape/:portalId`) with per-scraper `ScraperModule` implementations. Authenticated via Bearer token from KV.
 
 ### Stack
 - **Runtime**: Cloudflare Workers + Hono
 - **Browser**: Cloudflare Browser Rendering (`@cloudflare/puppeteer`)
 - **Auth**: Bearer token from KV (`SCRAPE_KV`)
-- **Credentials**: Portal logins stored in KV
+- **Credentials**: Per-portal logins stored in KV
+- **Pattern**: Catalog-driven `ScraperModule` interface (`meta` + `execute()`)
 
 ### Scrape Targets
-| Target | Endpoint | Input |
-|--------|----------|-------|
-| Cook County Circuit Clerk | `POST /api/scrape/court-docket` | `{ caseNumber }` |
-| Cook County Treasurer | `POST /api/scrape/cook-county-tax` | `{ pin }` |
-| Mr. Cooper Mortgage | `POST /api/scrape/mr-cooper` | `{ property }` |
+| Portal ID | Target | Input |
+|-----------|--------|-------|
+| `court-docket` | Cook County Circuit Clerk | `{ caseNumber }` |
+| `cook-county-tax` | Cook County Treasurer | `{ pin }` |
+| `mr-cooper` | Mr. Cooper mortgage portal | `{ property }` |
+| `peoples-gas` | Peoples Gas utility portal | `{ accountNumber }` |
+| `comed` | ComEd utility portal | `{ accountNumber }` |
+| `court-name-search` | Cook County courts (by name) | `{ name, divisions? }` |
 
 ## Three Aspects (TY VY RY)
 
@@ -42,7 +46,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | Aspect | Abbrev | Answer |
 |--------|--------|--------|
 | **Identity** | TY | Stateless browser automation service — scrapes portals without APIs and returns structured JSON to calling services |
-| **Connectivity** | VY | Cloudflare Browser Rendering for headless sessions; POST endpoints per scrape target (court dockets, property tax, mortgage); called by ChittyCommand via bridge routes and cron |
+| **Connectivity** | VY | Cloudflare Browser Rendering for headless sessions; catalog-driven `POST /api/scrape/:portalId` endpoint; capabilities discovery for ChittyRouter; called by ChittyCommand and ChittyRouter |
 | **Authority** | RY | Tier 3 Service — execution layer only, no data persistence; caller (ChittyCommand) owns scheduling, storage, and orchestration |
 
 ## ChittyOS Ecosystem
@@ -61,6 +65,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | Service | Purpose |
 |---------|---------|
 | ChittyCommand | Primary caller via bridge routes and cron |
+| ChittyRouter | Routes data requests, discovers capabilities |
 | Cloudflare Browser Rendering | Headless browser instances |
 | Cloudflare KV | Service token and scrape credentials |
 
@@ -69,9 +74,15 @@ Source: `chittycanon://gov/governance#three-aspects`
 |------|--------|------|---------|
 | `/health` | GET | No | Health check |
 | `/api/v1/status` | GET | No | Service metadata |
+| `/api/v1/capabilities` | GET | No | Scraper capability declaration for ChittyRouter |
+| `/api/v1/gaps` | GET | Bearer | Reported capability gaps |
+| `/api/scrape/:portalId` | POST | Bearer | Generic scrape (catalog lookup) |
 | `/api/scrape/court-docket` | POST | Bearer | Scrape Cook County court docket |
 | `/api/scrape/cook-county-tax` | POST | Bearer | Scrape Cook County property tax |
 | `/api/scrape/mr-cooper` | POST | Bearer | Scrape Mr. Cooper mortgage portal |
+| `/api/scrape/peoples-gas` | POST | Bearer | Scrape Peoples Gas utility portal |
+| `/api/scrape/comed` | POST | Bearer | Scrape ComEd utility portal |
+| `/api/scrape/court-name-search` | POST | Bearer | Search Cook County courts by party name |
 
 ## Document Triad
 
