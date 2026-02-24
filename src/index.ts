@@ -5,6 +5,7 @@ import { courtDocketScraper } from './scrapers/court-docket';
 import { cookCountyTaxScraper } from './scrapers/cook-county-tax';
 import { mrCooperScraper } from './scrapers/mr-cooper';
 import { peoplesGasScraper } from './scrapers/peoples-gas';
+import { comedScraper } from './scrapers/comed';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -20,6 +21,7 @@ catalog.register(courtDocketScraper);
 catalog.register(cookCountyTaxScraper);
 catalog.register(mrCooperScraper);
 catalog.register(peoplesGasScraper);
+catalog.register(comedScraper);
 
 /** Timing-safe string comparison to prevent timing attacks on token validation */
 function timingSafeEqual(a: string, b: string): boolean {
