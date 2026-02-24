@@ -70,6 +70,31 @@ All scrape endpoints return: `{ success: boolean; data?: T; error?: string }`
 | Technical Lead | @chittyos-infrastructure |
 | Contact | chittyscrape@chitty.cc |
 
+## Three Aspects (TY VY RY)
+
+Source: `chittycanon://gov/governance#three-aspects`
+
+| Aspect | Abbrev | Question | ChittyScrape Answer |
+|--------|--------|----------|--------------------|
+| **Identity** | TY | What IS it? | Stateless browser automation service — scrapes portals without APIs and returns structured JSON to calling services |
+| **Connectivity** | VY | How does it ACT? | Cloudflare Browser Rendering for headless sessions; POST endpoints per scrape target (court dockets, property tax, mortgage); called by ChittyCommand via bridge routes and cron |
+| **Authority** | RY | Where does it SIT? | Tier 3 Service — execution layer only, no data persistence; caller (ChittyCommand) owns scheduling, storage, and orchestration |
+
+## Document Triad
+
+This charter is part of a synchronized documentation triad. Changes to shared fields must propagate.
+
+| Field | Canonical Source | Also In |
+|-------|-----------------|---------|
+| Canonical URI | CHARTER.md (Classification) | CHITTY.md (blockquote) |
+| Tier | CHARTER.md (Classification) | CHITTY.md (blockquote) |
+| Domain | CHARTER.md (Classification) | CHITTY.md (blockquote), CLAUDE.md (header) |
+| Endpoints | CHARTER.md (API Contract) | CHITTY.md (Endpoints table), CLAUDE.md (API section) |
+| Dependencies | CHARTER.md (Dependencies) | CHITTY.md (Dependencies table), CLAUDE.md (Architecture) |
+| Certification badge | CHITTY.md (Certification) | CHARTER.md frontmatter `status` |
+
+**Related docs**: [CHITTY.md](CHITTY.md) (badge/one-pager) | [CLAUDE.md](CLAUDE.md) (developer guide)
+
 ## Compliance
 
 - [ ] Service registered in ChittyRegistry
