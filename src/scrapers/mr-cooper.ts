@@ -1,4 +1,5 @@
 import puppeteer from '@cloudflare/puppeteer';
+import { wrapResult, resolveSelector, type ScraperModule } from './base';
 
 export interface PaymentHistoryEntry {
   date: string;
@@ -392,18 +393,22 @@ export async function scrapeMrCooper(
   }
 }
 
-/**
- * Try multiple CSS selectors and return the first one that matches an element on the page.
- * Returns null if none match.
- */
-async function resolveSelector(page: any, selectors: string[]): Promise<string | null> {
-  for (const selector of selectors) {
-    try {
-      const el = await page.$(selector);
-      if (el) return selector;
-    } catch {
-      // Some selectors (like :has-text) may not be valid CSS -- skip
+export const mrCooperScraper: ScraperModule<{ property: string }, MrCooperResult['data']> = {
+  meta: {
+    id: 'mr-cooper',
+    name: 'Mr. Cooper Mortgage',
+    category: 'mortgage',
+    version: '0.1.0',
+    requiresAuth: true,
+    credentialKeys: ['mrcooper:username', 'mrcooper:password'],
+  },
+  async execute(browser, env, input) {
+    const username = await env.SCRAPE_KV.get('mrcooper:username');
+    const password = await env.SCRAPE_KV.get('mrcooper:password');
+    if (!username || !password) {
+      return wrapResult('mr-cooper', false, undefined, 'Mr. Cooper credentials not configured');
     }
-  }
-  return null;
-}
+    const result = await scrapeMrCooper(browser, { username, password }, input.property);
+    return wrapResult('mr-cooper', result.success, result.data, result.error);
+  },
+};

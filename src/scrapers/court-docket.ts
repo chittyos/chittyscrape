@@ -1,4 +1,5 @@
 import puppeteer from '@cloudflare/puppeteer';
+import { wrapResult, type ScraperModule } from './base';
 
 interface DocketEntry {
   date: string;
@@ -84,3 +85,17 @@ export async function scrapeCookCountyDocket(browser: Fetcher, caseNumber: strin
     if (browserInstance) await browserInstance.close().catch(() => {});
   }
 }
+
+export const courtDocketScraper: ScraperModule<{ caseNumber: string }, DocketResult['data']> = {
+  meta: {
+    id: 'court-docket',
+    name: 'Cook County Court Docket',
+    category: 'court',
+    version: '0.1.0',
+    requiresAuth: false,
+  },
+  async execute(browser, env, input) {
+    const result = await scrapeCookCountyDocket(browser, input.caseNumber);
+    return wrapResult('court-docket', result.success, result.data, result.error);
+  },
+};
