@@ -2,7 +2,7 @@
 uri: chittycanon://docs/ops/policy/chittyscrape-charter
 namespace: chittycanon://docs/ops
 type: policy
-version: 1.0.0
+version: 1.1.0
 status: DRAFT
 registered_with: chittycanon://core/services/canon
 title: "ChittyScrape Charter"
@@ -27,9 +27,12 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 ### IS Responsible For
 - Browser-based scraping of court docket systems (Cook County Circuit Clerk)
 - Browser-based scraping of property tax portals (Cook County Treasurer)
-- Authenticated portal scraping (Mr. Cooper mortgage)
+- Authenticated portal scraping (Mr. Cooper mortgage, Peoples Gas, ComEd)
+- Court name search across all Cook County divisions
 - Returning structured, typed JSON results from scrape operations
 - Managing scrape-specific credentials in KV
+- Declaring scraper capabilities for ChittyRouter discovery
+- Tracking capability gaps for unknown portal requests
 
 ### IS NOT Responsible For
 - Identity generation (ChittyID)
@@ -43,6 +46,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 | Type | Service | Purpose |
 |------|---------|---------|
 | Upstream | ChittyCommand | Primary caller via bridge routes and cron |
+| Upstream | ChittyRouter | Routes data requests, discovers capabilities |
 | Platform | Cloudflare Browser Rendering | Headless browser instances |
 | Storage | Cloudflare KV | Service token and scrape credentials |
 
@@ -55,12 +59,18 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 |----------|--------|------|---------|
 | `/health` | GET | No | Health check |
 | `/api/v1/status` | GET | No | Service metadata |
+| `/api/v1/capabilities` | GET | No | Scraper capability declaration for ChittyRouter |
+| `/api/v1/gaps` | GET | Bearer | Reported capability gaps |
+| `/api/scrape/:portalId` | POST | Bearer | Generic scrape -- catalog lookup |
 | `/api/scrape/court-docket` | POST | Bearer | Scrape Cook County court docket |
 | `/api/scrape/cook-county-tax` | POST | Bearer | Scrape Cook County property tax |
 | `/api/scrape/mr-cooper` | POST | Bearer | Scrape Mr. Cooper mortgage portal |
+| `/api/scrape/peoples-gas` | POST | Bearer | Scrape Peoples Gas utility portal |
+| `/api/scrape/comed` | POST | Bearer | Scrape ComEd utility portal |
+| `/api/scrape/court-name-search` | POST | Bearer | Search Cook County courts by party name |
 
 ### Response Shape
-All scrape endpoints return: `{ success: boolean; data?: T; error?: string }`
+All scrape endpoints return: `{ success: boolean; data?: T; error?: string; method: 'scrape'; portal: string; scrapedAt: string }`
 
 ## Ownership
 
@@ -77,7 +87,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | Aspect | Abbrev | Question | ChittyScrape Answer |
 |--------|--------|----------|--------------------|
 | **Identity** | TY | What IS it? | Stateless browser automation service — scrapes portals without APIs and returns structured JSON to calling services |
-| **Connectivity** | VY | How does it ACT? | Cloudflare Browser Rendering for headless sessions; POST endpoints per scrape target (court dockets, property tax, mortgage); called by ChittyCommand via bridge routes and cron |
+| **Connectivity** | VY | How does it ACT? | Cloudflare Browser Rendering for headless sessions; catalog-driven POST /api/scrape/:portalId endpoint; capabilities discovery for ChittyRouter; called by ChittyCommand and ChittyRouter |
 | **Authority** | RY | Where does it SIT? | Tier 3 Service — execution layer only, no data persistence; caller (ChittyCommand) owns scheduling, storage, and orchestration |
 
 ## Document Triad
@@ -104,4 +114,4 @@ This charter is part of a synchronized documentation triad. Changes to shared fi
 - [x] CHITTY.md present
 
 ---
-*Charter Version: 1.0.0 | Last Updated: 2026-02-23*
+*Charter Version: 1.1.0 | Last Updated: 2026-02-24*
