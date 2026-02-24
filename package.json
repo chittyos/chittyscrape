@@ -1,6 +1,6 @@
 {
   "name": "chittyscrape",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Stateless browser automation service for the ChittyOS ecosystem",
   "private": true,
   "scripts": {
