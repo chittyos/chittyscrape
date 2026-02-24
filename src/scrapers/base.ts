@@ -28,7 +28,7 @@ export interface ScraperModule<TInput = unknown, TOutput = unknown> {
 export function wrapResult<T>(
   portal: string,
   success: boolean,
-  data?: T,
+  data: T | undefined,
   error?: string,
 ): ScrapeResult<T> {
   return {
