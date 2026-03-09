@@ -1,4 +1,5 @@
 import puppeteer from '@cloudflare/puppeteer';
+import { wrapResult, type ScraperModule } from './base';
 
 export interface TaxInstallment {
   number: number;
@@ -248,3 +249,20 @@ export async function scrapeCookCountyTax(browser: Fetcher, pin: string): Promis
     if (browserInstance) await browserInstance.close().catch(() => {});
   }
 }
+
+export const cookCountyTaxScraper: ScraperModule<{ pin: string }, TaxResult['data']> = {
+  meta: {
+    id: 'cook-county-tax',
+    name: 'Cook County Property Tax',
+    category: 'tax',
+    version: '0.1.0',
+    requiresAuth: false,
+  },
+  async execute(browser, env, input) {
+    if (!input?.pin?.trim()) {
+      return wrapResult('cook-county-tax', false, undefined, 'pin is required');
+    }
+    const result = await scrapeCookCountyTax(browser, input.pin);
+    return wrapResult('cook-county-tax', result.success, result.data, result.error);
+  },
+};
