@@ -8,6 +8,7 @@ import { peoplesGasScraper } from './scrapers/peoples-gas';
 import { comedScraper } from './scrapers/comed';
 import { courtNameSearchScraper } from './scrapers/court-name-search';
 import { appfolioHoaScraper } from './scrapers/appfolio-hoa';
+import { googleDriveScraper } from './scrapers/google-drive';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -29,6 +30,7 @@ catalog.register(peoplesGasScraper);
 catalog.register(comedScraper);
 catalog.register(courtNameSearchScraper);
 catalog.register(appfolioHoaScraper);
+catalog.register(googleDriveScraper);
 
 /** Timing-safe string comparison to prevent timing attacks on token validation */
 function timingSafeEqual(a: string, b: string): boolean {

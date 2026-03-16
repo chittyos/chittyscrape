@@ -41,6 +41,7 @@ All scrapers are accessed via `POST /api/scrape/:portalId` (generic) or their sp
 | `comed` | ComEd portal | `{ accountNumber }` |
 | `court-name-search` | Cook County courts (by name) | `{ name, divisions? }` |
 | `appfolio-hoa` | AppFolio HOA portals | `{ portfolio }` (propertyhill / chicagoland) |
+| `google-drive` | Google Drive search | `{ query, mimeType?, folderId?, flagForIngestion? }` |
 
 All return `{ success: boolean; data?: T; error?: string; method: 'scrape'; portal: string; scrapedAt: string }`.
 
