@@ -108,7 +108,8 @@ async function scrapeAppfolioPortal(
 
     // Verify we left the login page
     const currentUrl: string = await page.evaluate(() => (globalThis as any).location?.href || '');
-    if (currentUrl.includes('account.appfolio.com') || currentUrl.includes('/sign_in')) {
+    const parsedHost = (() => { try { return new URL(currentUrl).hostname; } catch { return ''; } })();
+    if (parsedHost === 'account.appfolio.com' || currentUrl.includes('/sign_in')) {
       return { success: false, error: 'Login failed -- check credentials or 2FA requirement' };
     }
 

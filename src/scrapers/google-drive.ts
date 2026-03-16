@@ -121,7 +121,7 @@ function buildDriveQuery(input: DriveSearchInput): string {
 
   // Full-text search
   if (input.query) {
-    parts.push(`fullText contains '${input.query.replace(/'/g, "\\'")}'`);
+    parts.push(`fullText contains '${input.query.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`);
   }
 
   // MIME type filter
