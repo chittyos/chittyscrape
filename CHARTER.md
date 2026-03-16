@@ -2,7 +2,7 @@
 uri: chittycanon://docs/ops/policy/chittyscrape-charter
 namespace: chittycanon://docs/ops
 type: policy
-version: 1.1.0
+version: 1.2.0
 status: DRAFT
 registered_with: chittycanon://core/services/canon
 title: "ChittyScrape Charter"
@@ -28,7 +28,9 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 - Browser-based scraping of court docket systems (Cook County Circuit Clerk)
 - Browser-based scraping of property tax portals (Cook County Treasurer)
 - Authenticated portal scraping (Mr. Cooper mortgage, Peoples Gas, ComEd)
+- HOA portal scraping (AppFolio — multi-portfolio support)
 - Court name search across all Cook County divisions
+- Google Drive search with evidence pipeline ingestion manifests
 - Returning structured, typed JSON results from scrape operations
 - Managing scrape-specific credentials in KV
 - Declaring scraper capabilities for ChittyRouter discovery
@@ -49,6 +51,8 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 | Upstream | ChittyRouter | Routes data requests, discovers capabilities |
 | Platform | Cloudflare Browser Rendering | Headless browser instances |
 | Storage | Cloudflare KV | Service token and scrape credentials |
+| Downstream | ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
+| External | Google Drive API | Document search via service account |
 
 ## API Contract
 
@@ -68,6 +72,8 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 | `/api/scrape/peoples-gas` | POST | Bearer | Scrape Peoples Gas utility portal |
 | `/api/scrape/comed` | POST | Bearer | Scrape ComEd utility portal |
 | `/api/scrape/court-name-search` | POST | Bearer | Search Cook County courts by party name |
+| `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
+| `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
 
 ### Response Shape
 All scrape endpoints return: `{ success: boolean; data?: T; error?: string; method: 'scrape'; portal: string; scrapedAt: string }`
@@ -114,4 +120,4 @@ This charter is part of a synchronized documentation triad. Changes to shared fi
 - [x] CHITTY.md present
 
 ---
-*Charter Version: 1.1.0 | Last Updated: 2026-02-24*
+*Charter Version: 1.2.0 | Last Updated: 2026-03-16*
