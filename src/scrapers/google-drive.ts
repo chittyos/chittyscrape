@@ -30,16 +30,24 @@ export interface DriveSearchData {
 }
 
 export interface IngestionManifest {
-  source: 'google-drive';
+  source: 'gdrive_sync';
   scrapedAt: string;
   fileCount: number;
   files: Array<{
+    sourceRef: string;
     driveFileId: string;
     name: string;
     mimeType: string;
-    size?: string;
-    md5Checksum?: string;
+    fileSize?: number;
     downloadUrl: string;
+    sourceMetadata: {
+      drive_md5?: string;
+      drive_created_time?: string;
+      drive_modified_time?: string;
+      drive_owners?: string[];
+      drive_parents?: string[];
+      drive_web_view_link?: string;
+    };
   }>;
 }
 
@@ -215,18 +223,28 @@ export const googleDriveScraper: ScraperModule<DriveSearchInput, DriveSearchData
       };
 
       // Build ingestion manifest for ChittyEvidence pipeline
+      // Uses gdrive_sync source type and gdrive:// source_ref format per ChittyEvidence schema
+      // MD5 stored in sourceMetadata (not source_hash) — IntakeWorker computes SHA-256 from content
       if (flagged && files.length > 0) {
         data.ingestionManifest = {
-          source: 'google-drive',
+          source: 'gdrive_sync',
           scrapedAt: now,
           fileCount: files.length,
           files: files.map((f) => ({
+            sourceRef: `gdrive://${f.id}`,
             driveFileId: f.id,
             name: f.name,
             mimeType: f.mimeType,
-            size: f.size,
-            md5Checksum: f.md5Checksum,
+            fileSize: f.size ? parseInt(f.size, 10) : undefined,
             downloadUrl: `${DRIVE_API}/files/${f.id}?alt=media`,
+            sourceMetadata: {
+              drive_md5: f.md5Checksum,
+              drive_created_time: f.createdTime,
+              drive_modified_time: f.modifiedTime,
+              drive_owners: f.owners,
+              drive_parents: f.parents,
+              drive_web_view_link: f.webViewLink,
+            },
           })),
         };
       }
