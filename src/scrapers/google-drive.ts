@@ -55,6 +55,16 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 
 const FILE_FIELDS = 'id,name,mimeType,size,createdTime,modifiedTime,owners,webViewLink,parents,md5Checksum';
 
+/** Default export MIME types for Google Workspace native files. */
+const WORKSPACE_EXPORT_TYPES: Record<string, string> = {
+  'application/vnd.google-apps.document': 'application/pdf',
+  'application/vnd.google-apps.spreadsheet': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.google-apps.presentation': 'application/pdf',
+  'application/vnd.google-apps.drawing': 'application/pdf',
+};
+
+const MAX_PAGES = 5;
+
 /**
  * Exchange a Google service account key for an access token.
  * Builds a self-signed JWT and exchanges it for an OAuth2 token.
@@ -121,28 +131,29 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
   return tokenData.access_token;
 }
 
+/** Escape a string for use inside a Drive API single-quoted literal. */
+function escapeDriveLiteral(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 /**
  * Build a Google Drive search query string from structured input.
  */
 function buildDriveQuery(input: DriveSearchInput): string {
   const parts: string[] = [];
 
-  // Full-text search
   if (input.query) {
-    parts.push(`fullText contains '${input.query.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`);
+    parts.push(`fullText contains '${escapeDriveLiteral(input.query)}'`);
   }
 
-  // MIME type filter
   if (input.mimeType) {
-    parts.push(`mimeType = '${input.mimeType}'`);
+    parts.push(`mimeType = '${escapeDriveLiteral(input.mimeType)}'`);
   }
 
-  // Folder scope
   if (input.folderId) {
-    parts.push(`'${input.folderId}' in parents`);
+    parts.push(`'${escapeDriveLiteral(input.folderId)}' in parents`);
   }
 
-  // Exclude trashed files
   parts.push('trashed = false');
 
   return parts.join(' and ');
@@ -158,6 +169,7 @@ export const googleDriveScraper: ScraperModule<DriveSearchInput, DriveSearchData
     credentialKeys: ['google-drive:service-account-key'],
   },
 
+  // API-only scraper — no browser lifecycle needed (exempt from puppeteer.launch guideline)
   async execute(_browser, env, input) {
     if (!input?.query?.trim()) {
       return wrapResult<DriveSearchData>('google-drive', false, undefined, 'query is required');
@@ -171,35 +183,36 @@ export const googleDriveScraper: ScraperModule<DriveSearchInput, DriveSearchData
     try {
       const accessToken = await getAccessToken(serviceAccountKey);
       const q = buildDriveQuery(input);
-      const maxResults = Math.min(input.maxResults || 50, 100);
+      const pageSize = Math.min(input.maxResults || 50, 100);
+      const authHeaders = { Authorization: `Bearer ${accessToken}` };
 
-      const searchUrl = `${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(${FILE_FIELDS}),nextPageToken&pageSize=${maxResults}&orderBy=modifiedTime desc`;
+      // Paginate through all results (capped at MAX_PAGES to bound execution time)
+      type RawFile = {
+        id: string; name: string; mimeType: string; size?: string;
+        createdTime?: string; modifiedTime?: string;
+        owners?: Array<{ displayName: string; emailAddress: string }>;
+        webViewLink?: string; parents?: string[]; md5Checksum?: string;
+      };
+      const allRawFiles: RawFile[] = [];
+      let pageToken: string | undefined;
 
-      const res = await fetch(searchUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      for (let page = 0; page < MAX_PAGES; page++) {
+        let url = `${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(${FILE_FIELDS}),nextPageToken&pageSize=${pageSize}&orderBy=modifiedTime desc`;
+        if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
 
-      if (!res.ok) {
-        const errBody = await res.text();
-        return wrapResult<DriveSearchData>('google-drive', false, undefined, `Drive API error: ${res.status} ${errBody}`);
+        const res = await fetch(url, { headers: authHeaders });
+        if (!res.ok) {
+          const errBody = await res.text();
+          return wrapResult<DriveSearchData>('google-drive', false, undefined, `Drive API error: ${res.status} ${errBody}`);
+        }
+
+        const body = (await res.json()) as { files: RawFile[]; nextPageToken?: string };
+        allRawFiles.push(...(body.files || []));
+        pageToken = body.nextPageToken;
+        if (!pageToken) break;
       }
 
-      const body = (await res.json()) as {
-        files: Array<{
-          id: string;
-          name: string;
-          mimeType: string;
-          size?: string;
-          createdTime?: string;
-          modifiedTime?: string;
-          owners?: Array<{ displayName: string; emailAddress: string }>;
-          webViewLink?: string;
-          parents?: string[];
-          md5Checksum?: string;
-        }>;
-      };
-
-      const files: DriveFile[] = (body.files || []).map((f) => ({
+      const files: DriveFile[] = allRawFiles.map((f) => ({
         id: f.id,
         name: f.name,
         mimeType: f.mimeType,
@@ -230,22 +243,30 @@ export const googleDriveScraper: ScraperModule<DriveSearchInput, DriveSearchData
           source: 'gdrive_sync',
           scrapedAt: now,
           fileCount: files.length,
-          files: files.map((f) => ({
-            sourceRef: `gdrive://${f.id}`,
-            driveFileId: f.id,
-            name: f.name,
-            mimeType: f.mimeType,
-            fileSize: f.size ? parseInt(f.size, 10) : undefined,
-            downloadUrl: `${DRIVE_API}/files/${f.id}?alt=media`,
-            sourceMetadata: {
-              drive_md5: f.md5Checksum,
-              drive_created_time: f.createdTime,
-              drive_modified_time: f.modifiedTime,
-              drive_owners: f.owners,
-              drive_parents: f.parents,
-              drive_web_view_link: f.webViewLink,
-            },
-          })),
+          files: files.map((f) => {
+            // Workspace files (Docs/Sheets/Slides) require export, not alt=media
+            const exportMime = WORKSPACE_EXPORT_TYPES[f.mimeType];
+            const downloadUrl = exportMime
+              ? `${DRIVE_API}/files/${f.id}/export?mimeType=${encodeURIComponent(exportMime)}`
+              : `${DRIVE_API}/files/${f.id}?alt=media`;
+
+            return {
+              sourceRef: `gdrive://${f.id}`,
+              driveFileId: f.id,
+              name: f.name,
+              mimeType: f.mimeType,
+              fileSize: f.size ? parseInt(f.size, 10) : undefined,
+              downloadUrl,
+              sourceMetadata: {
+                drive_md5: f.md5Checksum,
+                drive_created_time: f.createdTime,
+                drive_modified_time: f.modifiedTime,
+                drive_owners: f.owners,
+                drive_parents: f.parents,
+                drive_web_view_link: f.webViewLink,
+              },
+            };
+          }),
         };
       }
 

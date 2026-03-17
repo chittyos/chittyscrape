@@ -106,10 +106,16 @@ async function scrapeAppfolioPortal(
     }
     await new Promise((r) => setTimeout(r, 3000));
 
-    // Verify we left the login page
+    // Verify we left the login page (use URL parsing to avoid substring bypass)
     const currentUrl: string = await page.evaluate(() => (globalThis as any).location?.href || '');
-    const parsedHost = (() => { try { return new URL(currentUrl).hostname; } catch { return ''; } })();
-    if (parsedHost === 'account.appfolio.com' || currentUrl.includes('/sign_in')) {
+    let stillOnLogin = false;
+    try {
+      const parsed = new URL(currentUrl);
+      stillOnLogin = parsed.hostname === 'account.appfolio.com' || parsed.pathname.includes('/sign_in');
+    } catch {
+      stillOnLogin = true;
+    }
+    if (stillOnLogin) {
       return { success: false, error: 'Login failed -- check credentials or 2FA requirement' };
     }
 
@@ -169,8 +175,8 @@ async function scrapeAppfolioPortal(
       const ledgerSel = await resolveSelector(page, [
         'a[href*="ledger"]', 'a[href*="payments"]', 'a[href*="transactions"]',
         'a[href*="balance"]', '[data-testid="ledger-link"]',
-        'a:has-text("Ledger")', 'a:has-text("Payment History")',
-        'a:has-text("Transactions")', '.nav-link[href*="ledger"]',
+        '::-p-text("Ledger")', '::-p-text("Payment History")',
+        '::-p-text("Transactions")', '.nav-link[href*="ledger"]',
       ]);
 
       if (ledgerSel) {
@@ -225,8 +231,8 @@ async function scrapeAppfolioPortal(
 
       const violationSel = await resolveSelector(page, [
         'a[href*="violation"]', 'a[href*="inspection"]', 'a[href*="compliance"]',
-        '[data-testid="violations-link"]', 'a:has-text("Violations")',
-        'a:has-text("Compliance")', '.nav-link[href*="violation"]',
+        '[data-testid="violations-link"]', '::-p-text("Violations")',
+        '::-p-text("Compliance")', '.nav-link[href*="violation"]',
       ]);
 
       if (violationSel) {
