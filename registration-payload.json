@@ -1,0 +1,51 @@
+{
+  "name": "chittyscrape",
+  "description": "Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers, HOA portals — and returns structured JSON. Catalog-driven architecture with capabilities discovery for ChittyRouter.",
+  "version": "0.2.0",
+  "endpoints": [
+    "/health",
+    "/api/v1/status",
+    "/api/v1/capabilities",
+    "/api/v1/gaps",
+    "/api/scrape/court-docket",
+    "/api/scrape/cook-county-tax",
+    "/api/scrape/mr-cooper",
+    "/api/scrape/peoples-gas",
+    "/api/scrape/comed",
+    "/api/scrape/court-name-search",
+    "/api/scrape/appfolio-hoa",
+    "/api/scrape/google-drive"
+  ],
+  "schema": {
+    "version": "1.0.0",
+    "entities": [
+      "scrape_result",
+      "scraper_module",
+      "scrape_catalog",
+      "capability_gap"
+    ],
+    "relationships": [
+      "chittycanon://rel/scrape_result->scraper_module",
+      "chittycanon://rel/scraper_module->scrape_catalog",
+      "chittycanon://rel/capability_gap->scrape_catalog",
+      "chittycanon://rel/chittyscrape->chittycommand",
+      "chittycanon://rel/chittyscrape->chittyrouter",
+      "chittycanon://rel/chittyscrape->chittyevidence"
+    ]
+  },
+  "security": {
+    "authentication": "apikey",
+    "encryption": "tls"
+  },
+  "metadata": {
+    "maintainer": "ChittyOS",
+    "repository": "CHITTYOS/chittyscrape",
+    "documentation": "https://scrape.chitty.cc/api/v1/capabilities",
+    "support": "chittyscrape@chitty.cc",
+    "tier": 3,
+    "domain": "scrape.chitty.cc",
+    "stack": "Cloudflare Workers, Hono, @cloudflare/puppeteer",
+    "runtime": "cloudflare-workers",
+    "canonicalUri": "chittycanon://core/services/chittyscrape"
+  }
+}
