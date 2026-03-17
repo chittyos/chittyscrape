@@ -2,7 +2,7 @@
 uri: chittycanon://docs/ops/summary/chittyscrape
 namespace: chittycanon://docs/ops
 type: summary
-version: 1.1.0
+version: 1.2.0
 status: DRAFT
 registered_with: chittycanon://core/services/canon
 title: "ChittyScrape"
@@ -16,7 +16,7 @@ visibility: PUBLIC
 
 ## What It Does
 
-Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers — and returns structured JSON to calling services. Catalog-driven architecture: scrapers self-register and are discoverable via capabilities endpoint.
+Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers, HOA portals — and returns structured JSON to calling services. Also provides API-based search (Google Drive) with evidence pipeline ingestion. Catalog-driven architecture: scrapers self-register and are discoverable via capabilities endpoint.
 
 ## Architecture
 
@@ -38,6 +38,8 @@ Cloudflare Worker at scrape.chitty.cc with Browser Rendering binding for headles
 | `peoples-gas` | Peoples Gas utility portal | `{ accountNumber }` |
 | `comed` | ComEd utility portal | `{ accountNumber }` |
 | `court-name-search` | Cook County courts (by name) | `{ name, divisions? }` |
+| `appfolio-hoa` | AppFolio HOA portals | `{ portfolio }` |
+| `google-drive` | Google Drive search | `{ query, mimeType?, folderId?, flagForIngestion? }` |
 
 ## Three Aspects (TY VY RY)
 
@@ -68,6 +70,8 @@ Source: `chittycanon://gov/governance#three-aspects`
 | ChittyRouter | Routes data requests, discovers capabilities |
 | Cloudflare Browser Rendering | Headless browser instances |
 | Cloudflare KV | Service token and scrape credentials |
+| ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
+| Google Drive API | Document search via service account |
 
 ### Endpoints
 | Path | Method | Auth | Purpose |
@@ -83,6 +87,8 @@ Source: `chittycanon://gov/governance#three-aspects`
 | `/api/scrape/peoples-gas` | POST | Bearer | Scrape Peoples Gas utility portal |
 | `/api/scrape/comed` | POST | Bearer | Scrape ComEd utility portal |
 | `/api/scrape/court-name-search` | POST | Bearer | Search Cook County courts by party name |
+| `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
+| `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
 
 ## Document Triad
 
