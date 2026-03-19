@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { ScraperCatalog } from './catalog';
+import { renderDashboard } from './frontend';
 import { courtDocketScraper } from './scrapers/court-docket';
 import { cookCountyTaxScraper } from './scrapers/cook-county-tax';
 import { mrCooperScraper } from './scrapers/mr-cooper';
@@ -51,9 +52,12 @@ app.onError((err, c) => {
 
 // CORS
 app.use('*', cors({
-  origin: ['https://command.chitty.cc', 'https://app.command.chitty.cc', 'https://router.chitty.cc'],
+  origin: ['https://command.chitty.cc', 'https://app.command.chitty.cc', 'https://router.chitty.cc', 'https://scrape.chitty.cc'],
   allowHeaders: ['Authorization', 'Content-Type'],
 }));
+
+// Dashboard UI
+app.get('/', (c) => c.html(renderDashboard()));
 
 // Auth middleware -- service token from KV (timing-safe comparison)
 app.use('/api/*', async (c, next) => {
