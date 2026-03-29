@@ -18,6 +18,13 @@ export type Env = {
   BROWSER: Fetcher;
   SCRAPE_KV: KVNamespace;
   ENVIRONMENT?: string;
+  CHITTYCONNECT_URL?: string;
+  CHITTYCONNECT_TOKEN?: string;
+  CHITTYCONNECT_API_KEY?: string;
+  FLRA_USERNAME_REF?: string;
+  FLRA_PASSWORD_REF?: string;
+  NWRA_USERNAME_REF?: string;
+  NWRA_PASSWORD_REF?: string;
 };
 
 const VERSION = '0.2.0';

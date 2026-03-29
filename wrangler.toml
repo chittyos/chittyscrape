@@ -8,6 +8,7 @@ routes = [{ pattern = "scrape.chitty.cc", custom_domain = true }]
 
 [vars]
 ENVIRONMENT = "production"
+CHITTYCONNECT_URL = "https://connect.chitty.cc"
 
 [browser]
 binding = "BROWSER"

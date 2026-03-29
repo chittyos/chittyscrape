@@ -178,7 +178,7 @@ export const wyomingSOSScraper: ScraperModule<
   },
   async execute(browser, _env, input) {
     if (!input?.entityName?.trim()) {
-      return wrapResult('wyoming-sos', false, undefined, 'entityName is required');
+      return wrapResult<WyomingEntityResult>('wyoming-sos', false, undefined, 'entityName is required');
     }
     const result = await scrapeWyomingSOS(browser, input.entityName.trim());
     return wrapResult('wyoming-sos', result.success, result.data, result.error);

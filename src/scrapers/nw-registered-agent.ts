@@ -1,5 +1,6 @@
 import puppeteer from '@cloudflare/puppeteer';
 import { wrapResult, resolveSelector, type ScraperModule } from './base';
+import { getChittyConnectCredential, getCredentialRef } from '../chittyconnect';
 
 export interface NWDocument {
   title: string;
@@ -28,7 +29,7 @@ export interface NWAgentResult {
  * - Account/payment status
  * - Annual report reminders
  *
- * Credentials stored in SCRAPE_KV as nwra:username and nwra:password.
+ * Credentials resolved from ChittyConnect using 1Password-style refs.
  */
 async function scrapeNWRegisteredAgent(
   browser: Fetcher,
@@ -321,13 +322,30 @@ export const nwRegisteredAgentScraper: ScraperModule<
     category: 'governance',
     version: '0.1.0',
     requiresAuth: true,
-    credentialKeys: ['nwra:username', 'nwra:password'],
+    credentialKeys: ['NWRA_USERNAME_REF', 'NWRA_PASSWORD_REF'],
   },
   async execute(browser, env, input) {
-    const username = await env.SCRAPE_KV.get('nwra:username');
-    const password = await env.SCRAPE_KV.get('nwra:password');
+    const usernameRef = getCredentialRef(
+      env,
+      'NWRA_USERNAME_REF',
+      'op://ChittyOS/Wyomingagents/username',
+    );
+    const passwordRef = getCredentialRef(
+      env,
+      'NWRA_PASSWORD_REF',
+      'op://ChittyOS/Wyomingagents/password',
+    );
+    const [username, password] = await Promise.all([
+      getChittyConnectCredential(env, usernameRef),
+      getChittyConnectCredential(env, passwordRef),
+    ]);
     if (!username || !password) {
-      return wrapResult('nw-registered-agent', false, undefined, 'NW Registered Agent credentials not configured in SCRAPE_KV (keys: nwra:username, nwra:password)');
+      return wrapResult<NWAgentResult>(
+        'nw-registered-agent',
+        false,
+        undefined,
+        `NW Registered Agent credentials unavailable via ChittyConnect (${usernameRef}, ${passwordRef})`,
+      );
     }
     const result = await scrapeNWRegisteredAgent(
       browser,

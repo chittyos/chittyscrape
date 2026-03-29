@@ -1,5 +1,6 @@
 import puppeteer from '@cloudflare/puppeteer';
 import { wrapResult, resolveSelector, type ScraperModule } from './base';
+import { getChittyConnectCredential, getCredentialRef } from '../chittyconnect';
 
 export interface FLAgentDocument {
   title: string;
@@ -24,7 +25,7 @@ export interface FLAgentResult {
  * Logs in, checks annual report status, payment status, and any pending filings.
  * Portal: floridaregisteredagent.net (or similar)
  *
- * Credentials stored in SCRAPE_KV as flra:username and flra:password.
+ * Credentials resolved from ChittyConnect using 1Password-style refs.
  */
 async function scrapeFLRegisteredAgent(
   browser: Fetcher,
@@ -164,13 +165,30 @@ export const flRegisteredAgentScraper: ScraperModule<
     category: 'governance',
     version: '0.1.0',
     requiresAuth: true,
-    credentialKeys: ['flra:username', 'flra:password'],
+    credentialKeys: ['FLRA_USERNAME_REF', 'FLRA_PASSWORD_REF'],
   },
   async execute(browser, env, input) {
-    const username = await env.SCRAPE_KV.get('flra:username');
-    const password = await env.SCRAPE_KV.get('flra:password');
+    const usernameRef = getCredentialRef(
+      env,
+      'FLRA_USERNAME_REF',
+      'op://ChittyOS/Florida Registered Agent/username',
+    );
+    const passwordRef = getCredentialRef(
+      env,
+      'FLRA_PASSWORD_REF',
+      'op://ChittyOS/Florida Registered Agent/password',
+    );
+    const [username, password] = await Promise.all([
+      getChittyConnectCredential(env, usernameRef),
+      getChittyConnectCredential(env, passwordRef),
+    ]);
     if (!username || !password) {
-      return wrapResult('fl-registered-agent', false, undefined, 'FL Registered Agent credentials not configured in SCRAPE_KV (keys: flra:username, flra:password)');
+      return wrapResult<FLAgentResult>(
+        'fl-registered-agent',
+        false,
+        undefined,
+        `FL Registered Agent credentials unavailable via ChittyConnect (${usernameRef}, ${passwordRef})`,
+      );
     }
     const result = await scrapeFLRegisteredAgent(browser, { username, password }, { entity: input?.entity });
     return wrapResult('fl-registered-agent', result.success, result.data, result.error);
