@@ -13,6 +13,7 @@ import { googleDriveScraper } from './scrapers/google-drive';
 import { nwRegisteredAgentScraper } from './scrapers/nw-registered-agent';
 import { flRegisteredAgentScraper } from './scrapers/fl-registered-agent';
 import { wyomingSOSScraper } from './scrapers/wyoming-sos';
+import { browseAIScraper } from './scrapers/browse-ai';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -25,6 +26,7 @@ export type Env = {
   FLRA_PASSWORD_REF?: string;
   NWRA_USERNAME_REF?: string;
   NWRA_PASSWORD_REF?: string;
+  BROWSE_AI_API_KEY_REF?: string;
 };
 
 const VERSION = '0.2.0';
@@ -45,6 +47,7 @@ catalog.register(googleDriveScraper);
 catalog.register(nwRegisteredAgentScraper);
 catalog.register(flRegisteredAgentScraper);
 catalog.register(wyomingSOSScraper);
+catalog.register(browseAIScraper);
 
 /** Timing-safe string comparison to prevent timing attacks on token validation */
 function timingSafeEqual(a: string, b: string): boolean {
