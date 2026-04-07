@@ -3,6 +3,7 @@
   "description": "Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers, HOA portals — and returns structured JSON. Catalog-driven architecture with capabilities discovery for ChittyRouter.",
   "version": "0.2.0",
   "endpoints": [
+    "/",
     "/health",
     "/api/v1/status",
     "/api/v1/capabilities",
