@@ -10,11 +10,27 @@ import { comedScraper } from './scrapers/comed';
 import { courtNameSearchScraper } from './scrapers/court-name-search';
 import { appfolioHoaScraper } from './scrapers/appfolio-hoa';
 import { googleDriveScraper } from './scrapers/google-drive';
+import { nwRegisteredAgentScraper } from './scrapers/nw-registered-agent';
+import { flRegisteredAgentScraper } from './scrapers/fl-registered-agent';
+import { wyomingSOSScraper } from './scrapers/wyoming-sos';
+import { browseAIScraper } from './scrapers/browse-ai';
+import { ilSOSScraper } from './scrapers/il-sos';
+import { flSunbizScraper } from './scrapers/fl-sunbiz';
+import { cookCountyRecorderScraper } from './scrapers/cook-county-recorder';
+import { cookCountyAssessorScraper } from './scrapers/cook-county-assessor';
 
 export type Env = {
   BROWSER: Fetcher;
   SCRAPE_KV: KVNamespace;
   ENVIRONMENT?: string;
+  CHITTYCONNECT_URL?: string;
+  CHITTYCONNECT_TOKEN?: string;
+  CHITTYCONNECT_API_KEY?: string;
+  FLRA_USERNAME_REF?: string;
+  FLRA_PASSWORD_REF?: string;
+  NWRA_USERNAME_REF?: string;
+  NWRA_PASSWORD_REF?: string;
+  BROWSE_AI_API_KEY_REF?: string;
 };
 
 const VERSION = '0.2.0';
@@ -32,6 +48,14 @@ catalog.register(comedScraper);
 catalog.register(courtNameSearchScraper);
 catalog.register(appfolioHoaScraper);
 catalog.register(googleDriveScraper);
+catalog.register(nwRegisteredAgentScraper);
+catalog.register(flRegisteredAgentScraper);
+catalog.register(wyomingSOSScraper);
+catalog.register(browseAIScraper);
+catalog.register(ilSOSScraper);
+catalog.register(flSunbizScraper);
+catalog.register(cookCountyRecorderScraper);
+catalog.register(cookCountyAssessorScraper);
 
 /** Timing-safe string comparison to prevent timing attacks on token validation */
 function timingSafeEqual(a: string, b: string): boolean {

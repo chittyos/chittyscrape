@@ -14,7 +14,15 @@
     "/api/scrape/comed",
     "/api/scrape/court-name-search",
     "/api/scrape/appfolio-hoa",
-    "/api/scrape/google-drive"
+    "/api/scrape/google-drive",
+    "/api/scrape/nw-registered-agent",
+    "/api/scrape/fl-registered-agent",
+    "/api/scrape/wyoming-sos",
+    "/api/scrape/browse-ai",
+    "/api/scrape/il-sos",
+    "/api/scrape/fl-sunbiz",
+    "/api/scrape/cook-county-recorder",
+    "/api/scrape/cook-county-assessor"
   ],
   "schema": {
     "version": "1.0.0",
