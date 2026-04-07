@@ -17,7 +17,7 @@ import { browseAIScraper } from './scrapers/browse-ai';
 import { ilSOSScraper } from './scrapers/il-sos';
 import { flSunbizScraper } from './scrapers/fl-sunbiz';
 import { cookCountyRecorderScraper } from './scrapers/cook-county-recorder';
-import { cookCountyAssessorScraper } from './scrapers/cook-county-assessor'; 62c74de (feat: add IL SOS, FL Sunbiz, Cook County Recorder & Assessor scrapers)
+import { cookCountyAssessorScraper } from './scrapers/cook-county-assessor';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -55,7 +55,7 @@ catalog.register(browseAIScraper);
 catalog.register(ilSOSScraper);
 catalog.register(flSunbizScraper);
 catalog.register(cookCountyRecorderScraper);
-catalog.register(cookCountyAssessorScraper); 62c74de (feat: add IL SOS, FL Sunbiz, Cook County Recorder & Assessor scrapers)
+catalog.register(cookCountyAssessorScraper);
 
 /** Timing-safe string comparison to prevent timing attacks on token validation */
 function timingSafeEqual(a: string, b: string): boolean {
