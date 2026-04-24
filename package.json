@@ -27,7 +27,7 @@
   "homepage": "https://github.com/chittyos/chittyscrape#readme",
   "dependencies": {
     "@cloudflare/puppeteer": "^1.0.6",
-    "hono": "^4.12.12"
+    "hono": "^4.12.14"
   },
   "overrides": {
     "undici": "^7.24.0"
