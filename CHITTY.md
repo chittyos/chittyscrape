@@ -6,7 +6,7 @@ version: 1.2.0
 status: DRAFT
 registered_with: chittycanon://core/services/canon
 title: "ChittyScrape"
-certifier: chittycanon://core/services/chittycertify
+certifier: chittycanon://core/foundation/mychitty-vault
 visibility: PUBLIC
 ---
 
@@ -55,7 +55,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 
 ### Certification
 - **Badge**: --
-- **Certifier**: ChittyCertify (`chittycanon://core/services/chittycertify`)
+- **Certifier**: ChittyFoundation (`chittycanon://core/foundation/mychitty-vault`)
 - **Last Certified**: --
 
 ### ChittyDNA

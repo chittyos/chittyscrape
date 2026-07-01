@@ -25,6 +25,7 @@ export type Env = {
   ENVIRONMENT?: string;
   CHITTYCONNECT_URL?: string;
   CHITTYCONNECT_TOKEN?: string;
+  INGESTION_API_URL?: string;
   CHITTYCONNECT_API_KEY?: string;
   FLRA_USERNAME_REF?: string;
   FLRA_PASSWORD_REF?: string;
@@ -211,6 +212,27 @@ app.post('/api/scrape/:portalId', async (c) => {
   // Execute scraper
   try {
     const result = await scraper.execute(c.env.BROWSER, c.env, input);
+
+    // [NEW] The Sensory Splice
+    if (result.success !== false && c.env.INGESTION_API_URL) {
+      c.executionCtx.waitUntil(
+        fetch(c.env.INGESTION_API_URL, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${c.env.CHITTYCONNECT_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            source_entity: `chittyscrape:${portalId}`,
+            focal_intensity: result.focal_intensity || 1.0, 
+            ttl_days: 30, // Triggers workers/shared/focal-trust.ts exponential decay
+            timestamp: new Date().toISOString(),
+            payload: result.data || result
+          })
+        }).catch(err => console.error(`Ledger ingestion failed for ${portalId}:`, err))
+      );
+    }
+
     return c.json(result);
   } catch (err: any) {
     console.error(`Scraper ${portalId} threw unhandled error: ${err.message}`, err.stack);
