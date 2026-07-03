@@ -26,6 +26,7 @@ export interface AppfolioHoaData {
 
 export interface AppfolioHoaInput {
   portfolio: string;
+  account_index?: number;
 }
 
 /**
@@ -54,6 +55,7 @@ async function scrapeAppfolioPortal(
   browser: Fetcher,
   env: { SCRAPE_KV: KVNamespace },
   portfolio: { subdomain: string; credPrefix: string; label: string },
+  accountIndex: number = 0,
 ): Promise<{ success: boolean; data?: AppfolioHoaData; error?: string }> {
   const username = await env.SCRAPE_KV.get(`${portfolio.credPrefix}:username`);
   const password = await env.SCRAPE_KV.get(`${portfolio.credPrefix}:password`);
@@ -118,6 +120,42 @@ async function scrapeAppfolioPortal(
     if (stillOnLogin) {
       return { success: false, error: 'Login failed -- check credentials or 2FA requirement' };
     }
+
+    // --- Switch Account Logic ---
+    if (accountIndex > 0) {
+      const switchBtn = await resolveSelector(page, [
+        '::-p-text("Switch Account")',
+        '::-p-text("See Accounts")',
+        '::-p-text("Switch Property")',
+        '::-p-text("Switch Accounts")',
+        'a[href*="/portals/switch"]',
+        '.nav-link[href*="switch"]',
+      ]);
+      if (switchBtn) {
+        await page.click(switchBtn);
+        await new Promise(r => setTimeout(r, 3000));
+        
+        await page.evaluate((idx: number) => {
+          const doc = (globalThis as any).document;
+          const cards = Array.from(doc.querySelectorAll('.property-card, .account-card, a[href*="login_as"], .portal-card, .list-group-item'));
+          if (cards.length > idx) {
+             (cards[idx] as any).click();
+          } else {
+             const links = Array.from(doc.querySelectorAll('a')).filter((a: any) => a.href.includes('token=') || a.href.includes('login_as') || (a.textContent && a.textContent.toLowerCase().includes('account')));
+             if (links.length > idx) {
+               (links[idx] as any).click();
+             }
+          }
+        }, accountIndex);
+
+        try {
+          await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 });
+        } catch {}
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    // ----------------------------
+
 
     // Extract dashboard data
     const dashboard = await page.evaluate(() => {
@@ -320,7 +358,7 @@ export const appfolioHoaScraper: ScraperModule<AppfolioHoaInput, AppfolioHoaData
       );
     }
 
-    const result = await scrapeAppfolioPortal(browser, env, portfolio);
+    const result = await scrapeAppfolioPortal(browser, env, portfolio, input?.account_index || 0);
     return wrapResult('appfolio-hoa', result.success, result.data, result.error);
   },
 };
