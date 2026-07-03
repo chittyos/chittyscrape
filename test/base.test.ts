@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wrapResult, resolveSelector } from '../src/scrapers/base';
+import { wrapResult, resolveSelector } from '../src/targets/base';
 
 describe('resolveSelector', () => {
   it('returns first matching selector', async () => {

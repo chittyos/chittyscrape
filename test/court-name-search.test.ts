@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { courtNameSearchScraper } from '../src/scrapers/court-name-search';
+import { courtNameSearchScraper } from '../src/targets/court-name-search';
 
 describe('court-name-search scraper meta', () => {
   it('has correct metadata', () => {

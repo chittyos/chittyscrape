@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appfolioHoaScraper } from '../src/scrapers/appfolio-hoa';
+import { appfolioHoaScraper } from '../src/targets/appfolio-hoa';
 
 describe('appfolio-hoa scraper meta', () => {
   it('has correct metadata', () => {

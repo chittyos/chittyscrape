@@ -194,7 +194,7 @@ app.post('/api/scrape/:portalId', async (c) => {
           },
           body: JSON.stringify({
             source_entity: `chittyscrape:${portalId}`,
-            focal_intensity: result.focal_intensity || 1.0, 
+            focal_intensity: (result as any).focal_intensity || 1.0, 
             ttl_days: 30, // Triggers workers/shared/focal-trust.ts exponential decay
             timestamp: new Date().toISOString(),
             payload: result.data || result

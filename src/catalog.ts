@@ -1,4 +1,4 @@
-import type { ScraperModule, ScraperMeta, ScraperCategory } from './scrapers/base';
+import type { ScraperModule, ScraperMeta, ScraperCategory } from './targets/base';
 
 export class ScraperCatalog {
   private scrapers = new Map<string, ScraperModule>();

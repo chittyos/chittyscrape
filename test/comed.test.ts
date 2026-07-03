@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { comedScraper } from '../src/scrapers/comed';
+import { comedScraper } from '../src/targets/comed';
 
 describe('comed scraper meta', () => {
   it('has correct metadata', () => {

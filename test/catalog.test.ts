@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ScraperCatalog } from '../src/catalog';
-import type { ScraperModule } from '../src/scrapers/base';
+import type { ScraperModule } from '../src/targets/base';
 
 function makeFakeScraper(id: string, category: string = 'utility'): ScraperModule {
   return {

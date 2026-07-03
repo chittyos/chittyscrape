@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { googleDriveScraper } from '../src/scrapers/google-drive';
+import { googleDriveScraper } from '../src/targets/google-drive';
 
 describe('google-drive scraper meta', () => {
   it('has correct metadata', () => {
