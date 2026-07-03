@@ -14,6 +14,7 @@ import { ilSOSScraper } from './il-sos';
 import { flSunbizScraper } from './fl-sunbiz';
 import { cookCountyRecorderScraper } from './cook-county-recorder';
 import { cookCountyAssessorScraper } from './cook-county-assessor';
+import { colombiaVURScraper } from './colombia-vur';
 
 export const allTargets = [
   courtDocketScraper,
@@ -31,5 +32,6 @@ export const allTargets = [
   ilSOSScraper,
   flSunbizScraper,
   cookCountyRecorderScraper,
-  cookCountyAssessorScraper
+  cookCountyAssessorScraper,
+  colombiaVURScraper
 ];
