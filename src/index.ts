@@ -2,22 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { ScraperCatalog } from './catalog';
 import { renderDashboard } from './frontend';
-import { courtDocketScraper } from './scrapers/court-docket';
-import { cookCountyTaxScraper } from './scrapers/cook-county-tax';
-import { mrCooperScraper } from './scrapers/mr-cooper';
-import { peoplesGasScraper } from './scrapers/peoples-gas';
-import { comedScraper } from './scrapers/comed';
-import { courtNameSearchScraper } from './scrapers/court-name-search';
-import { appfolioHoaScraper } from './scrapers/appfolio-hoa';
-import { googleDriveScraper } from './scrapers/google-drive';
-import { nwRegisteredAgentScraper } from './scrapers/nw-registered-agent';
-import { flRegisteredAgentScraper } from './scrapers/fl-registered-agent';
-import { wyomingSOSScraper } from './scrapers/wyoming-sos';
-import { browseAIScraper } from './scrapers/browse-ai';
-import { ilSOSScraper } from './scrapers/il-sos';
-import { flSunbizScraper } from './scrapers/fl-sunbiz';
-import { cookCountyRecorderScraper } from './scrapers/cook-county-recorder';
-import { cookCountyAssessorScraper } from './scrapers/cook-county-assessor';
+import { allTargets } from './targets/catalog';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -25,6 +10,7 @@ export type Env = {
   ENVIRONMENT?: string;
   CHITTYCONNECT_URL?: string;
   CHITTYCONNECT_TOKEN?: string;
+  INGESTION_API_URL?: string;
   CHITTYCONNECT_API_KEY?: string;
   FLRA_USERNAME_REF?: string;
   FLRA_PASSWORD_REF?: string;
@@ -40,22 +26,7 @@ const PORTAL_ID_RE = /^[a-z0-9-]{1,64}$/;
 
 // Build the scraper catalog
 const catalog = new ScraperCatalog();
-catalog.register(courtDocketScraper);
-catalog.register(cookCountyTaxScraper);
-catalog.register(mrCooperScraper);
-catalog.register(peoplesGasScraper);
-catalog.register(comedScraper);
-catalog.register(courtNameSearchScraper);
-catalog.register(appfolioHoaScraper);
-catalog.register(googleDriveScraper);
-catalog.register(nwRegisteredAgentScraper);
-catalog.register(flRegisteredAgentScraper);
-catalog.register(wyomingSOSScraper);
-catalog.register(browseAIScraper);
-catalog.register(ilSOSScraper);
-catalog.register(flSunbizScraper);
-catalog.register(cookCountyRecorderScraper);
-catalog.register(cookCountyAssessorScraper);
+allTargets.forEach(target => catalog.register(target));
 
 /** Timing-safe string comparison to prevent timing attacks on token validation */
 function timingSafeEqual(a: string, b: string): boolean {
@@ -211,6 +182,27 @@ app.post('/api/scrape/:portalId', async (c) => {
   // Execute scraper
   try {
     const result = await scraper.execute(c.env.BROWSER, c.env, input);
+
+    // [NEW] The Sensory Splice
+    if (result.success !== false && c.env.INGESTION_API_URL) {
+      c.executionCtx.waitUntil(
+        fetch(c.env.INGESTION_API_URL, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${c.env.CHITTYCONNECT_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            source_entity: `chittyscrape:${portalId}`,
+            focal_intensity: result.focal_intensity || 1.0, 
+            ttl_days: 30, // Triggers workers/shared/focal-trust.ts exponential decay
+            timestamp: new Date().toISOString(),
+            payload: result.data || result
+          })
+        }).catch(err => console.error(`Ledger ingestion failed for ${portalId}:`, err))
+      );
+    }
+
     return c.json(result);
   } catch (err: any) {
     console.error(`Scraper ${portalId} threw unhandled error: ${err.message}`, err.stack);
