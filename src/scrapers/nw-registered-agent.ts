@@ -18,6 +18,39 @@ export interface NWAgentResult {
   mailForwardingStatus?: string;
   paymentStatus?: string;
   alerts: string[];
+  /**
+   * Annual registered-agent fee in USD, parsed from the account/billing page
+   * when the portal surfaces it. Undefined when no fee is shown (e.g. the
+   * inbox view carries no billing total) — consumers that book a cost MUST
+   * treat absence as "amount unknown", never as $0. This is the monetary
+   * field ChittyFinance's vendor-charge ingest consumes.
+   */
+  annualFeeUsd?: number;
+}
+
+/**
+ * Parse a registered-agent annual fee from portal page text.
+ *
+ * Northwest's billing/account pages render the renewal cost near phrases like
+ * "Registered Agent", "Annual Fee", "Renewal", or "Service Fee" followed by a
+ * dollar amount. We scan for those anchors and return the nearest USD figure.
+ * Returns undefined when nothing matches — the caller must not default to 0.
+ */
+export function parseAnnualFee(text: string): number | undefined {
+  if (!text) return undefined;
+  const anchors = /(registered\s+agent|annual\s+fee|renewal|service\s+fee|yearly)/i;
+  // $amount allowing thousands separators and optional cents.
+  const money = /\$\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?|[0-9]+(?:\.[0-9]{2})?)/;
+  for (const rawLine of text.split(/\n|\.|;/)) {
+    const line = rawLine.trim();
+    if (!anchors.test(line)) continue;
+    const m = line.match(money);
+    if (m) {
+      const val = parseFloat(m[1].replace(/,/g, ''));
+      if (Number.isFinite(val) && val > 0) return val;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -294,6 +327,10 @@ async function scrapeNWRegisteredAgent(
 
     const alerts = accountData?.alerts || [];
 
+    // Best-effort parse of the annual fee from the account page text. Undefined
+    // when the portal view shows no fee — never coerced to 0.
+    const annualFeeUsd = parseAnnualFee(accountData?.bodySnippet || '');
+
     return {
       success: true,
       data: {
@@ -302,6 +339,7 @@ async function scrapeNWRegisteredAgent(
         documents,
         paymentStatus: alerts.includes('PAYMENT_FAILED') ? 'failed' : 'ok',
         alerts,
+        annualFeeUsd,
       },
     };
   } catch (err: any) {
