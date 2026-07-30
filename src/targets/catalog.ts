@@ -15,6 +15,7 @@ import { flSunbizScraper } from './fl-sunbiz';
 import { cookCountyRecorderScraper } from './cook-county-recorder';
 import { cookCountyAssessorScraper } from './cook-county-assessor';
 import { colombiaVurScraper } from './colombia-vur';
+import { firecrawlTarget } from './firecrawl';
 
 export const allTargets = [
   courtDocketScraper,
@@ -33,5 +34,6 @@ export const allTargets = [
   flSunbizScraper,
   cookCountyRecorderScraper,
   cookCountyAssessorScraper,
-  colombiaVurScraper
+  colombiaVurScraper,
+  firecrawlTarget
 ];
