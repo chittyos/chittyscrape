@@ -216,4 +216,82 @@ app.post('/api/scrape/:portalId', async (c) => {
   }
 });
 
+// Push endpoint for scrapers that cannot run inside this Worker at all --
+// currently only court-docket (chittyentity/actors/chittyactor-cook-county-docket).
+// Cook County Clerk's F5/Shape WAF blocks every CDP-driven/headless method
+// this Worker could otherwise use (Cloudflare Browser Rendering included --
+// see that actor's CHARTER.md for the full evidence trail). The only
+// verified-working method is a real Safari GUI session on a specific Mac
+// (chittymini-01), which stays tailnet-private -- it pushes its
+// already-scraped results here instead of this Worker reaching in to pull
+// them, so nothing on that host is ever exposed to the public internet.
+//
+// Reuses the existing /api/* Bearer-token auth (same scrape:service_token)
+// and the same "Sensory Splice" ingestion side-effect as the normal
+// /api/scrape/:portalId success path, so downstream consumers of a scrape
+// success see no difference in how the data arrived.
+app.post('/api/scrape/:portalId/submit', async (c) => {
+  const portalId = c.req.param('portalId');
+
+  if (!PORTAL_ID_RE.test(portalId)) {
+    return c.json({ success: false, error: 'Invalid portal ID format' }, 400);
+  }
+
+  const scraper = catalog.get(portalId);
+  if (!scraper) {
+    return c.json({ success: false, error: 'no_scraper_registered', portalId }, 404);
+  }
+
+  let body: { success?: boolean; data?: unknown; error?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: 'Invalid or missing JSON request body' }, 400);
+  }
+
+  const result = {
+    success: body.success !== false,
+    data: body.data,
+    error: body.error,
+    method: 'scrape' as const,
+    portal: portalId,
+    scrapedAt: new Date().toISOString(),
+  };
+
+  try {
+    await c.env.SCRAPE_KV.put(
+      `submitted:${portalId}:${result.scrapedAt}`,
+      JSON.stringify(result),
+      { expirationTtl: 60 * 60 * 24 * 90 }, // 90 days
+    );
+  } catch (err: any) {
+    console.error(`Failed to persist submitted result for ${portalId}: ${err.message}`);
+    return c.json({ success: false, error: 'Failed to persist submitted result' }, 500);
+  }
+
+  // Same "Sensory Splice" ingestion side-effect as a live scrape success --
+  // downstream consumers of the ledger see no difference in how the data
+  // arrived.
+  if (result.success && c.env.INGESTION_API_URL) {
+    c.executionCtx.waitUntil(
+      fetch(c.env.INGESTION_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.CHITTYCONNECT_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source_entity: `chittyscrape:${portalId}:submitted`,
+          focal_intensity: 1.0,
+          ttl_days: 30,
+          timestamp: result.scrapedAt,
+          payload: result.data,
+        }),
+      }).catch(err => console.error(`Ledger ingestion failed for ${portalId} (submitted): ${err}`)),
+    );
+  }
+
+  return c.json(result);
+});
+
 export default { fetch: app.fetch };
