@@ -230,11 +230,26 @@ app.post('/api/scrape/:portalId', async (c) => {
 // and the same "Sensory Splice" ingestion side-effect as the normal
 // /api/scrape/:portalId success path, so downstream consumers of a scrape
 // success see no difference in how the data arrived.
+// Portals allowed to push results here, instead of this Worker scraping them
+// itself. The shared /api/* Bearer token authenticates ANY caller for ANY
+// portal -- without this allowlist, a valid token could submit forged data
+// under a portalId it has no business touching (e.g. push fabricated
+// property-tax records while only ever having been meant to push
+// court-docket ones). Add a portal here only when its scraper genuinely
+// cannot run inside this Worker (see chittyactor-cook-county-docket's
+// CHARTER.md for why court-docket is the first entry) -- this is not a
+// rubber-stamp list.
+const SUBMIT_ALLOWED_PORTALS = new Set(['court-docket']);
+
 app.post('/api/scrape/:portalId/submit', async (c) => {
   const portalId = c.req.param('portalId');
 
   if (!PORTAL_ID_RE.test(portalId)) {
     return c.json({ success: false, error: 'Invalid portal ID format' }, 400);
+  }
+
+  if (!SUBMIT_ALLOWED_PORTALS.has(portalId)) {
+    return c.json({ success: false, error: 'portal_not_submittable', portalId }, 403);
   }
 
   const scraper = catalog.get(portalId);
