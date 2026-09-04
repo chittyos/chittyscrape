@@ -241,6 +241,25 @@ app.post('/api/scrape/:portalId', async (c) => {
 // rubber-stamp list.
 const SUBMIT_ALLOWED_PORTALS = new Set(['court-docket']);
 
+/** caseId is a KV-key segment (case number or a caller-supplied label) -- keep it narrow. */
+const CASE_ID_RE = /^[A-Za-z0-9._-]{1,128}$/;
+
+/**
+ * Derive the case-scoped identifier a submitted result is keyed and later
+ * looked up by. Prefers the real court case number the scraper itself
+ * resolved (`data.case_number`, e.g. "2024D007847") over a caller-supplied
+ * `caseId` (used for not-found results, or callers searching by company
+ * name whose case number wasn't resolved) -- the real case number is the
+ * more canonical, generically-queryable identifier, and any case pushed
+ * here (not just the ones this endpoint was first built for) gets keyed
+ * the same way, so /latest works for any case without special-casing.
+ */
+function deriveCaseId(body: { data?: unknown; caseId?: unknown }): string | null {
+  const fromData = body.data && typeof body.data === 'object' ? (body.data as any).case_number : undefined;
+  const candidate = (typeof fromData === 'string' && fromData) || (typeof body.caseId === 'string' && body.caseId) || null;
+  return candidate && CASE_ID_RE.test(candidate) ? candidate : null;
+}
+
 app.post('/api/scrape/:portalId/submit', async (c) => {
   const portalId = c.req.param('portalId');
 
@@ -257,11 +276,16 @@ app.post('/api/scrape/:portalId/submit', async (c) => {
     return c.json({ success: false, error: 'no_scraper_registered', portalId }, 404);
   }
 
-  let body: { success?: boolean; data?: unknown; error?: string };
+  let body: { success?: boolean; data?: unknown; error?: string; caseId?: string };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ success: false, error: 'Invalid or missing JSON request body' }, 400);
+  }
+
+  const caseId = deriveCaseId(body);
+  if (!caseId) {
+    return c.json({ success: false, error: 'Missing or invalid case identifier (data.case_number or caseId)' }, 400);
   }
 
   const result = {
@@ -270,12 +294,15 @@ app.post('/api/scrape/:portalId/submit', async (c) => {
     error: body.error,
     method: 'scrape' as const,
     portal: portalId,
+    caseId,
     scrapedAt: new Date().toISOString(),
   };
 
   try {
+    // Case-scoped key so /latest can look up any case's most recent result
+    // by prefix -- not just the case(s) this portal was first wired for.
     await c.env.SCRAPE_KV.put(
-      `submitted:${portalId}:${result.scrapedAt}`,
+      `submitted:${portalId}:${caseId}:${result.scrapedAt}`,
       JSON.stringify(result),
       { expirationTtl: 60 * 60 * 24 * 90 }, // 90 days
     );
@@ -307,6 +334,63 @@ app.post('/api/scrape/:portalId/submit', async (c) => {
   }
 
   return c.json(result);
+});
+
+// Generic read-back for submitted results -- ?case=<caseNumber-or-caseId> is
+// required so this works for ANY case pushed via /submit, not just whichever
+// case(s) prompted this endpoint to be built. Consumers that used to POST
+// /api/scrape/:portalId (a live synchronous scrape, which court-docket can
+// never satisfy -- see the /submit route's comment for why) should GET this
+// instead once their portal only ever arrives via /submit.
+app.get('/api/scrape/:portalId/latest', async (c) => {
+  const portalId = c.req.param('portalId');
+
+  if (!PORTAL_ID_RE.test(portalId)) {
+    return c.json({ success: false, error: 'Invalid portal ID format' }, 400);
+  }
+  if (!SUBMIT_ALLOWED_PORTALS.has(portalId)) {
+    return c.json({ success: false, error: 'portal_not_submittable', portalId }, 403);
+  }
+
+  const caseId = c.req.query('case');
+  if (!caseId || !CASE_ID_RE.test(caseId)) {
+    return c.json({ success: false, error: 'Missing or invalid ?case query param' }, 400);
+  }
+
+  const prefix = `submitted:${portalId}:${caseId}:`;
+  let keys: { name: string }[];
+  try {
+    // ISO-8601 timestamps sort lexicographically, so the last key in KV's
+    // (lexicographically ascending) listing is the most recent result.
+    const list = await c.env.SCRAPE_KV.list({ prefix });
+    keys = list.keys;
+  } catch (err: any) {
+    console.error(`Failed to list submitted results for ${portalId}/${caseId}: ${err.message}`);
+    return c.json({ success: false, error: 'Failed to list submitted results' }, 500);
+  }
+
+  if (keys.length === 0) {
+    return c.json({ success: false, error: 'no_submitted_result', portalId, caseId }, 404);
+  }
+
+  const latestKey = keys[keys.length - 1].name;
+  let raw: string | null;
+  try {
+    raw = await c.env.SCRAPE_KV.get(latestKey);
+  } catch (err: any) {
+    console.error(`Failed to read ${latestKey}: ${err.message}`);
+    return c.json({ success: false, error: 'Failed to read submitted result' }, 500);
+  }
+  if (!raw) {
+    return c.json({ success: false, error: 'no_submitted_result', portalId, caseId }, 404);
+  }
+
+  try {
+    return c.json(JSON.parse(raw));
+  } catch (err: any) {
+    console.error(`Corrupted submitted result at ${latestKey}: ${err.message}`);
+    return c.json({ success: false, error: 'Corrupted submitted result' }, 500);
+  }
 });
 
 export default { fetch: app.fetch };
