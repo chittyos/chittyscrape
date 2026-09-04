@@ -242,21 +242,27 @@ app.post('/api/scrape/:portalId', async (c) => {
 const SUBMIT_ALLOWED_PORTALS = new Set(['court-docket']);
 
 /** caseId is a KV-key segment (case number or a caller-supplied label) -- keep it narrow. */
-const CASE_ID_RE = /^[A-Za-z0-9._-]{1,128}$/;
+const CASE_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
 
 /**
  * Derive the case-scoped identifier a submitted result is keyed and later
- * looked up by. Prefers the real court case number the scraper itself
- * resolved (`data.case_number`, e.g. "2024D007847") over a caller-supplied
- * `caseId` (used for not-found results, or callers searching by company
- * name whose case number wasn't resolved) -- the real case number is the
- * more canonical, generically-queryable identifier, and any case pushed
- * here (not just the ones this endpoint was first built for) gets keyed
- * the same way, so /latest works for any case without special-casing.
+ * looked up by. The caller-supplied `caseId` is authoritative -- it's the
+ * one stable identifier a consumer configures once and queries /latest by
+ * forever (e.g. chittycommand's COURT_DOCKET_TRACKED_CASES). `data.case_number`
+ * is only a fallback for callers that don't send `caseId` at all.
+ *
+ * Deliberately NOT the other way around (preferring the resolved case
+ * number over the caller's caseId): a company-name search that comes back
+ * not_found has no case_number yet, so it'd key under a caller label; the
+ * very next run that resolves a real case_number would silently key under
+ * a DIFFERENT prefix, orphaning the earlier pushes and forcing every
+ * consumer to know both possible keys. Requiring callers to pick one
+ * stable caseId up front and always send it avoids that drift entirely.
  */
 function deriveCaseId(body: { data?: unknown; caseId?: unknown }): string | null {
+  const fromCaller = typeof body.caseId === 'string' && body.caseId;
   const fromData = body.data && typeof body.data === 'object' ? (body.data as any).case_number : undefined;
-  const candidate = (typeof fromData === 'string' && fromData) || (typeof body.caseId === 'string' && body.caseId) || null;
+  const candidate = fromCaller || (typeof fromData === 'string' && fromData) || null;
   return candidate && CASE_ID_RE.test(candidate) ? candidate : null;
 }
 
@@ -299,13 +305,19 @@ app.post('/api/scrape/:portalId/submit', async (c) => {
   };
 
   try {
-    // Case-scoped key so /latest can look up any case's most recent result
-    // by prefix -- not just the case(s) this portal was first wired for.
-    await c.env.SCRAPE_KV.put(
-      `submitted:${portalId}:${caseId}:${result.scrapedAt}`,
-      JSON.stringify(result),
-      { expirationTtl: 60 * 60 * 24 * 90 }, // 90 days
-    );
+    const serialized = JSON.stringify(result);
+    // Two keys per submission: a timestamped audit-log entry (so history
+    // isn't lost), and a single `latest:` key /latest reads directly --
+    // an overwrite-on-write, not a list-then-get-most-recent. That avoids
+    // a list/get race (a key expiring or being evicted between the two
+    // calls) and means every case, not just ones queried often, resolves
+    // in one KV read.
+    await Promise.all([
+      c.env.SCRAPE_KV.put(`submitted:${portalId}:${caseId}:${result.scrapedAt}`, serialized, {
+        expirationTtl: 60 * 60 * 24 * 90, // 90 days
+      }),
+      c.env.SCRAPE_KV.put(`latest:${portalId}:${caseId}`, serialized),
+    ]);
   } catch (err: any) {
     console.error(`Failed to persist submitted result for ${portalId}: ${err.message}`);
     return c.json({ success: false, error: 'Failed to persist submitted result' }, 500);
@@ -357,23 +369,9 @@ app.get('/api/scrape/:portalId/latest', async (c) => {
     return c.json({ success: false, error: 'Missing or invalid ?case query param' }, 400);
   }
 
-  const prefix = `submitted:${portalId}:${caseId}:`;
-  let keys: { name: string }[];
-  try {
-    // ISO-8601 timestamps sort lexicographically, so the last key in KV's
-    // (lexicographically ascending) listing is the most recent result.
-    const list = await c.env.SCRAPE_KV.list({ prefix });
-    keys = list.keys;
-  } catch (err: any) {
-    console.error(`Failed to list submitted results for ${portalId}/${caseId}: ${err.message}`);
-    return c.json({ success: false, error: 'Failed to list submitted results' }, 500);
-  }
-
-  if (keys.length === 0) {
-    return c.json({ success: false, error: 'no_submitted_result', portalId, caseId }, 404);
-  }
-
-  const latestKey = keys[keys.length - 1].name;
+  // Single overwrite-on-write key (see /submit) -- one KV read, no
+  // list-then-get race against a key expiring/being evicted in between.
+  const latestKey = `latest:${portalId}:${caseId}`;
   let raw: string | null;
   try {
     raw = await c.env.SCRAPE_KV.get(latestKey);
