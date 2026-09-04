@@ -216,4 +216,179 @@ app.post('/api/scrape/:portalId', async (c) => {
   }
 });
 
+// Push endpoint for scrapers that cannot run inside this Worker at all --
+// currently only court-docket (chittyentity/actors/chittyactor-cook-county-docket).
+// Cook County Clerk's F5/Shape WAF blocks every CDP-driven/headless method
+// this Worker could otherwise use (Cloudflare Browser Rendering included --
+// see that actor's CHARTER.md for the full evidence trail). The only
+// verified-working method is a real Safari GUI session on a specific Mac
+// (chittymini-01), which stays tailnet-private -- it pushes its
+// already-scraped results here instead of this Worker reaching in to pull
+// them, so nothing on that host is ever exposed to the public internet.
+//
+// Reuses the existing /api/* Bearer-token auth (same scrape:service_token)
+// and the same "Sensory Splice" ingestion side-effect as the normal
+// /api/scrape/:portalId success path, so downstream consumers of a scrape
+// success see no difference in how the data arrived.
+// Portals allowed to push results here, instead of this Worker scraping them
+// itself. The shared /api/* Bearer token authenticates ANY caller for ANY
+// portal -- without this allowlist, a valid token could submit forged data
+// under a portalId it has no business touching (e.g. push fabricated
+// property-tax records while only ever having been meant to push
+// court-docket ones). Add a portal here only when its scraper genuinely
+// cannot run inside this Worker (see chittyactor-cook-county-docket's
+// CHARTER.md for why court-docket is the first entry) -- this is not a
+// rubber-stamp list.
+const SUBMIT_ALLOWED_PORTALS = new Set(['court-docket']);
+
+/** caseId is a KV-key segment (case number or a caller-supplied label) -- keep it narrow. */
+const CASE_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
+
+/**
+ * Derive the case-scoped identifier a submitted result is keyed and later
+ * looked up by. The caller-supplied `caseId` is authoritative -- it's the
+ * one stable identifier a consumer configures once and queries /latest by
+ * forever (e.g. chittycommand's COURT_DOCKET_TRACKED_CASES). `data.case_number`
+ * is only a fallback for callers that don't send `caseId` at all.
+ *
+ * Deliberately NOT the other way around (preferring the resolved case
+ * number over the caller's caseId): a company-name search that comes back
+ * not_found has no case_number yet, so it'd key under a caller label; the
+ * very next run that resolves a real case_number would silently key under
+ * a DIFFERENT prefix, orphaning the earlier pushes and forcing every
+ * consumer to know both possible keys. Requiring callers to pick one
+ * stable caseId up front and always send it avoids that drift entirely.
+ */
+function deriveCaseId(body: { data?: unknown; caseId?: unknown }): string | null {
+  const fromCaller = typeof body.caseId === 'string' && body.caseId;
+  const fromData = body.data && typeof body.data === 'object' ? (body.data as any).case_number : undefined;
+  const candidate = fromCaller || (typeof fromData === 'string' && fromData) || null;
+  return candidate && CASE_ID_RE.test(candidate) ? candidate : null;
+}
+
+app.post('/api/scrape/:portalId/submit', async (c) => {
+  const portalId = c.req.param('portalId');
+
+  if (!PORTAL_ID_RE.test(portalId)) {
+    return c.json({ success: false, error: 'Invalid portal ID format' }, 400);
+  }
+
+  if (!SUBMIT_ALLOWED_PORTALS.has(portalId)) {
+    return c.json({ success: false, error: 'portal_not_submittable', portalId }, 403);
+  }
+
+  const scraper = catalog.get(portalId);
+  if (!scraper) {
+    return c.json({ success: false, error: 'no_scraper_registered', portalId }, 404);
+  }
+
+  let body: { success?: boolean; data?: unknown; error?: string; caseId?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: 'Invalid or missing JSON request body' }, 400);
+  }
+
+  const caseId = deriveCaseId(body);
+  if (!caseId) {
+    return c.json({ success: false, error: 'Missing or invalid case identifier (data.case_number or caseId)' }, 400);
+  }
+
+  const result = {
+    success: body.success !== false,
+    data: body.data,
+    error: body.error,
+    method: 'scrape' as const,
+    portal: portalId,
+    caseId,
+    scrapedAt: new Date().toISOString(),
+  };
+
+  try {
+    const serialized = JSON.stringify(result);
+    // Two keys per submission: a timestamped audit-log entry (so history
+    // isn't lost), and a single `latest:` key /latest reads directly --
+    // an overwrite-on-write, not a list-then-get-most-recent. That avoids
+    // a list/get race (a key expiring or being evicted between the two
+    // calls) and means every case, not just ones queried often, resolves
+    // in one KV read.
+    await Promise.all([
+      c.env.SCRAPE_KV.put(`submitted:${portalId}:${caseId}:${result.scrapedAt}`, serialized, {
+        expirationTtl: 60 * 60 * 24 * 90, // 90 days
+      }),
+      c.env.SCRAPE_KV.put(`latest:${portalId}:${caseId}`, serialized),
+    ]);
+  } catch (err: any) {
+    console.error(`Failed to persist submitted result for ${portalId}: ${err.message}`);
+    return c.json({ success: false, error: 'Failed to persist submitted result' }, 500);
+  }
+
+  // Same "Sensory Splice" ingestion side-effect as a live scrape success --
+  // downstream consumers of the ledger see no difference in how the data
+  // arrived.
+  if (result.success && c.env.INGESTION_API_URL) {
+    c.executionCtx.waitUntil(
+      fetch(c.env.INGESTION_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.CHITTYCONNECT_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source_entity: `chittyscrape:${portalId}:submitted`,
+          focal_intensity: 1.0,
+          ttl_days: 30,
+          timestamp: result.scrapedAt,
+          payload: result.data,
+        }),
+      }).catch(err => console.error(`Ledger ingestion failed for ${portalId} (submitted): ${err}`)),
+    );
+  }
+
+  return c.json(result);
+});
+
+// Generic read-back for submitted results -- ?case=<caseNumber-or-caseId> is
+// required so this works for ANY case pushed via /submit, not just whichever
+// case(s) prompted this endpoint to be built. Consumers that used to POST
+// /api/scrape/:portalId (a live synchronous scrape, which court-docket can
+// never satisfy -- see the /submit route's comment for why) should GET this
+// instead once their portal only ever arrives via /submit.
+app.get('/api/scrape/:portalId/latest', async (c) => {
+  const portalId = c.req.param('portalId');
+
+  if (!PORTAL_ID_RE.test(portalId)) {
+    return c.json({ success: false, error: 'Invalid portal ID format' }, 400);
+  }
+  if (!SUBMIT_ALLOWED_PORTALS.has(portalId)) {
+    return c.json({ success: false, error: 'portal_not_submittable', portalId }, 403);
+  }
+
+  const caseId = c.req.query('case');
+  if (!caseId || !CASE_ID_RE.test(caseId)) {
+    return c.json({ success: false, error: 'Missing or invalid ?case query param' }, 400);
+  }
+
+  // Single overwrite-on-write key (see /submit) -- one KV read, no
+  // list-then-get race against a key expiring/being evicted in between.
+  const latestKey = `latest:${portalId}:${caseId}`;
+  let raw: string | null;
+  try {
+    raw = await c.env.SCRAPE_KV.get(latestKey);
+  } catch (err: any) {
+    console.error(`Failed to read ${latestKey}: ${err.message}`);
+    return c.json({ success: false, error: 'Failed to read submitted result' }, 500);
+  }
+  if (!raw) {
+    return c.json({ success: false, error: 'no_submitted_result', portalId, caseId }, 404);
+  }
+
+  try {
+    return c.json(JSON.parse(raw));
+  } catch (err: any) {
+    console.error(`Corrupted submitted result at ${latestKey}: ${err.message}`);
+    return c.json({ success: false, error: 'Corrupted submitted result' }, 500);
+  }
+});
+
 export default { fetch: app.fetch };
