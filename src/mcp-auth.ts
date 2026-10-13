@@ -1,7 +1,3 @@
-export interface SecretValueBinding {
-  get(): Promise<string>;
-}
-
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   const encoder = new TextEncoder();
@@ -16,15 +12,22 @@ export type McpAuthResult =
 
 export async function authorizeMcpBearer(
   authorization: string | undefined,
-  binding: SecretValueBinding | undefined,
+  resolveExpectedToken: () => Promise<string | null>,
 ): Promise<McpAuthResult> {
-  if (!binding) {
-    return { ok: false, status: 503, error: 'auth_not_configured' };
+  // Reject unauthenticated requests before touching the broker. This avoids
+  // turning arbitrary Internet traffic into credential-broker fan-out.
+  if (!authorization?.startsWith('Bearer ')) {
+    return { ok: false, status: 401, error: 'unauthorized' };
   }
 
-  let expected: string;
+  const supplied = authorization.slice('Bearer '.length);
+  if (!supplied) {
+    return { ok: false, status: 401, error: 'unauthorized' };
+  }
+
+  let expected: string | null;
   try {
-    expected = await binding.get();
+    expected = await resolveExpectedToken();
   } catch {
     return { ok: false, status: 503, error: 'auth_unavailable' };
   }
@@ -33,12 +36,7 @@ export async function authorizeMcpBearer(
     return { ok: false, status: 503, error: 'auth_not_configured' };
   }
 
-  if (!authorization?.startsWith('Bearer ')) {
-    return { ok: false, status: 401, error: 'unauthorized' };
-  }
-
-  const supplied = authorization.slice('Bearer '.length);
-  if (!supplied || !timingSafeEqual(supplied, expected)) {
+  if (!timingSafeEqual(supplied, expected)) {
     return { ok: false, status: 401, error: 'unauthorized' };
   }
 
