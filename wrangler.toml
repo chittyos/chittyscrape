@@ -13,6 +13,11 @@ CHITTYCONNECT_URL = "https://connect.chitty.cc"
 [browser]
 binding = "BROWSER"
 
+[[secrets_store_secrets]]
+binding = "CHITTY_MCP_TOKEN"
+store_id = "e914522471964c3c8cf1e601770edcc3"
+secret_name = "ch1tty_mcp_token"
+
 [[kv_namespaces]]
 binding = "SCRAPE_KV"
 id = "6d10f7d3727c46b781181d08555f2a7c"
