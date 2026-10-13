@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ScraperCatalog } from '../src/catalog';
 import type { ScraperModule } from '../src/targets/base';
+import { allTargets } from '../src/targets/catalog';
 
 function makeFakeScraper(id: string, category: string = 'utility'): ScraperModule {
   return {
@@ -58,5 +59,12 @@ describe('ScraperCatalog', () => {
     const list = catalog.list();
     list[0].id = 'hacked';
     expect(catalog.get('original')!.meta.id).toBe('original');
+  });
+
+  it('registers the REI Hub synthetic-user adapter in the production target set', () => {
+    const reiHub = allTargets.find((target) => target.meta.id === 'rei-hub');
+    expect(reiHub).toBeDefined();
+    expect(reiHub?.meta.requiresAuth).toBe(true);
+    expect(reiHub?.meta.credentialKeys).toEqual(['REIHUB_USERNAME_REF', 'REIHUB_PASSWORD_REF']);
   });
 });
