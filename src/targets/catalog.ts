@@ -16,6 +16,7 @@ import { cookCountyRecorderScraper } from './cook-county-recorder';
 import { cookCountyAssessorScraper } from './cook-county-assessor';
 import { colombiaVurScraper } from './colombia-vur';
 import { firecrawlTarget } from './firecrawl';
+import { reiHubScraper } from './rei-hub';
 
 export const allTargets = [
   courtDocketScraper,
@@ -35,5 +36,6 @@ export const allTargets = [
   cookCountyRecorderScraper,
   cookCountyAssessorScraper,
   colombiaVurScraper,
-  firecrawlTarget
+  firecrawlTarget,
+  reiHubScraper,
 ];
