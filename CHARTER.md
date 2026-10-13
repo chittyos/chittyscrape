@@ -35,7 +35,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 - Returning structured, typed JSON results from scrape operations
 - Resolving supported portal credentials through ChittyConnect; retaining only legacy scrape credentials and the service bearer in KV pending migration
 - Declaring scraper capabilities for ChittyRouter discovery
-- Exposing a focused read-only MCP surface for agent discovery/invocation
+- Exposing a focused read-only MCP surface for agent discovery/invocation; MCP bearer verification is brokered through ChittyConnect at point of use
 - Tracking capability gaps for unknown portal requests
 
 ### IS NOT Responsible For
