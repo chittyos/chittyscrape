@@ -1,6 +1,6 @@
 import puppeteer from '@cloudflare/puppeteer';
 import { wrapResult, type ScraperModule } from './base';
-import { getChittyConnectCredential } from '../chittyconnect';
+import { getChittyConnectCredential, getCredentialRef } from '../chittyconnect';
 
 export interface ReiHubTableSnapshot {
   headers: string[];
@@ -299,16 +299,16 @@ export const reiHubScraper: ScraperModule<ReiHubInput, ReiHubSnapshot> = {
     credentialKeys: ['REIHUB_USERNAME_REF', 'REIHUB_PASSWORD_REF'],
   },
   async execute(browser, env, input) {
-    const usernameRef = env.REIHUB_USERNAME_REF?.trim();
-    const passwordRef = env.REIHUB_PASSWORD_REF?.trim();
-    if (!usernameRef || !passwordRef) {
-      return wrapResult<ReiHubSnapshot>(
-        'rei-hub',
-        false,
-        undefined,
-        'REI Hub credential refs are not configured (REIHUB_USERNAME_REF / REIHUB_PASSWORD_REF)',
-      );
-    }
+    const usernameRef = getCredentialRef(
+      env,
+      'REIHUB_USERNAME_REF',
+      'integrations/reihub/username',
+    );
+    const passwordRef = getCredentialRef(
+      env,
+      'REIHUB_PASSWORD_REF',
+      'integrations/reihub/password',
+    );
 
     const [username, password] = await Promise.all([
       getChittyConnectCredential(env, usernameRef),
