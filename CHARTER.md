@@ -33,7 +33,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 - Court name search across all Cook County divisions
 - Google Drive search with evidence pipeline ingestion manifests
 - Returning structured, typed JSON results from scrape operations
-- Managing scrape-specific credentials in KV
+- Resolving supported portal credentials through ChittyConnect; retaining only legacy scrape credentials and the service bearer in KV pending migration
 - Declaring scraper capabilities for ChittyRouter discovery
 - Tracking capability gaps for unknown portal requests
 
@@ -52,7 +52,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 | Upstream | ChittyRouter | Routes data requests, discovers capabilities |
 | Upstream | ChittyConnect | Brokers REI Hub and other portal credential retrieval; ChittyScrape does not own credential authority |
 | Platform | Cloudflare Browser Rendering | Headless browser instances |
-| Storage | Cloudflare KV | Service token and scrape credentials |
+| Storage | Cloudflare KV | Service bearer and legacy scrape credentials pending broker migration |
 | Downstream | ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
 | External | Google Drive API | Document search via service account |
 
@@ -121,6 +121,7 @@ This charter is part of a synchronized documentation triad. Changes to shared fi
 - [x] CLAUDE.md development guide present
 - [x] CHARTER.md present
 - [x] CHITTY.md present
+- [x] AGENTS.md present
 
 ---
 *Charter Version: 1.2.0 | Last Updated: 2026-03-16*
