@@ -3,6 +3,8 @@ import { cors } from 'hono/cors';
 import { ScraperCatalog } from './catalog';
 import { renderDashboard } from './frontend';
 import { allTargets } from './targets/catalog';
+import { handleMcpRequest, type McpRequest } from './mcp';
+import { authorizeMcpBearer, type SecretValueBinding } from './mcp-auth';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -19,6 +21,7 @@ export type Env = {
   BROWSE_AI_API_KEY_REF?: string;
   REIHUB_USERNAME_REF?: string;
   REIHUB_PASSWORD_REF?: string;
+  CHITTY_MCP_TOKEN?: SecretValueBinding;
 };
 
 const VERSION = '0.2.0';
@@ -55,6 +58,45 @@ app.use('*', cors({
 
 // Dashboard UI
 app.get('/', (c) => c.html(renderDashboard()));
+
+// Focused MCP auth. This deliberately uses the ecosystem-wide ChittyMCP bearer,
+// bound read-only from Cloudflare Secrets Store, rather than the /api/* service
+// token in SCRAPE_KV. The two trust boundaries remain separate.
+app.use('/mcp', async (c, next) => {
+  const auth = await authorizeMcpBearer(
+    c.req.header('Authorization'),
+    c.env.CHITTY_MCP_TOKEN,
+  );
+  if (!auth.ok) {
+    return c.json({ error: auth.error }, auth.status);
+  }
+  return next();
+});
+
+// Stateless JSON-RPC MCP transport. No session id is issued, so clients keep
+// using POST for initialize/list/call and no SSE stream is opened.
+app.post('/mcp', async (c) => {
+  let body: McpRequest;
+  try {
+    body = await c.req.json<McpRequest>();
+  } catch {
+    return c.json({
+      jsonrpc: '2.0',
+      id: null,
+      error: { code: -32700, message: 'Parse error' },
+    }, 400);
+  }
+
+  const result = await handleMcpRequest(body, catalog, c.env.BROWSER, c.env);
+  if (result.body === null) {
+    return new Response(null, { status: result.status });
+  }
+
+  return new Response(JSON.stringify(result.body), {
+    status: result.status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+});
 
 // Auth middleware -- service token from KV (timing-safe comparison)
 app.use('/api/*', async (c, next) => {

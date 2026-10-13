@@ -48,6 +48,18 @@ Credential env refs:
 
 Both refs are dereferenced through ChittyConnect. Never hardcode account credentials.
 
+## MCP Surface
+
+Endpoint: `POST /mcp`.
+
+The MCP surface is deliberately narrower than the REST scraper catalog. It exposes:
+- `list-scrapers` — read scraper metadata.
+- `rei-hub-snapshot` — execute the read-only REI Hub snapshot adapter.
+
+Authentication uses the existing ecosystem `ch1tty_mcp_token` through a Cloudflare Secrets Store binding named `CHITTY_MCP_TOKEN`. The secret value must never be logged, copied to KV, or committed.
+
+The MCP transport is stateless JSON-RPC. It supports initialize, ping, tools list/call, empty resource/template lists, empty prompt list, and initialized notifications.
+
 ## Agent Rules
 
 1. Discover an existing scraper before adding a target.

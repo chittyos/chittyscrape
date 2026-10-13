@@ -16,7 +16,7 @@ visibility: PUBLIC
 
 ## What It Does
 
-Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers, HOA portals — and returns structured JSON to calling services. Also provides API-based search (Google Drive) with evidence pipeline ingestion. Catalog-driven architecture: scrapers self-register and are discoverable via capabilities endpoint.
+Stateless browser automation service that scrapes portals lacking APIs — court dockets, property tax sites, utility portals, mortgage servicers, HOA portals — and returns structured JSON to calling services. Also provides API-based search (Google Drive) with evidence pipeline ingestion. Catalog-driven architecture: scrapers self-register and are discoverable via capabilities endpoint. Agents also get a focused read-only MCP surface at `/mcp`.
 
 ## Architecture
 
@@ -28,6 +28,7 @@ Cloudflare Worker at scrape.chitty.cc with Browser Rendering binding for headles
 - **Auth**: Bearer token from KV (`SCRAPE_KV`)
 - **Credentials**: ChittyConnect-brokered refs for supported authenticated portals; SCRAPE_KV retains the service bearer and legacy portal credentials pending migration
 - **Pattern**: Catalog-driven `ScraperModule` interface (`meta` + `execute()`)
+- **MCP**: Stateless JSON-RPC over `/mcp`, authenticated with the shared ChittyMCP bearer bound from Cloudflare Secrets Store
 
 ### Scrape Targets
 | Portal ID | Target | Input |
@@ -70,6 +71,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | ChittyCommand | Primary caller via bridge routes and cron |
 | ChittyRouter | Routes data requests, discovers capabilities |
 | ChittyConnect | Brokers credential retrieval for REI Hub and other authenticated portals |
+| Ch1tty / MCP clients | Focused read-only agent invocation over `/mcp` |
 | Cloudflare Browser Rendering | Headless browser instances |
 | Cloudflare KV | Service bearer and legacy scrape credentials pending broker migration |
 | ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
@@ -92,6 +94,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
 | `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
 | `/api/scrape/rei-hub` | POST | Bearer | Read REI Hub Booked Transactions and COA views into a hashed snapshot |
+| `/mcp` | POST | ChittyMCP bearer | Focused MCP tools: `list-scrapers`, `rei-hub-snapshot` |
 
 ## Document Triad
 
