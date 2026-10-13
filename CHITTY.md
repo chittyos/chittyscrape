@@ -1,7 +1,7 @@
 ---
-uri: chittycanon://docs/ops/summary/chittyscrape
+uri: chittycanon://docs/ops/architecture/chittyscrape
 namespace: chittycanon://docs/ops
-type: summary
+type: architecture
 version: 1.2.0
 status: DRAFT
 registered_with: chittycanon://core/services/canon
@@ -26,7 +26,7 @@ Cloudflare Worker at scrape.chitty.cc with Browser Rendering binding for headles
 - **Runtime**: Cloudflare Workers + Hono
 - **Browser**: Cloudflare Browser Rendering (`@cloudflare/puppeteer`)
 - **Auth**: Bearer token from KV (`SCRAPE_KV`)
-- **Credentials**: Per-portal logins stored in KV
+- **Credentials**: ChittyConnect-brokered refs for supported authenticated portals; SCRAPE_KV retains the service bearer and legacy portal credentials pending migration
 - **Pattern**: Catalog-driven `ScraperModule` interface (`meta` + `execute()`)
 
 ### Scrape Targets
@@ -71,7 +71,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | ChittyRouter | Routes data requests, discovers capabilities |
 | ChittyConnect | Brokers credential retrieval for REI Hub and other authenticated portals |
 | Cloudflare Browser Rendering | Headless browser instances |
-| Cloudflare KV | Service token and scrape credentials |
+| Cloudflare KV | Service bearer and legacy scrape credentials pending broker migration |
 | ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
 | Google Drive API | Document search via service account |
 
