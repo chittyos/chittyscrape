@@ -17,6 +17,8 @@ export type Env = {
   NWRA_USERNAME_REF?: string;
   NWRA_PASSWORD_REF?: string;
   BROWSE_AI_API_KEY_REF?: string;
+  REIHUB_USERNAME_REF?: string;
+  REIHUB_PASSWORD_REF?: string;
 };
 
 const VERSION = '0.2.0';
@@ -188,14 +190,14 @@ app.post('/api/scrape/:portalId', async (c) => {
       c.executionCtx.waitUntil(
         fetch(c.env.INGESTION_API_URL, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Authorization': `Bearer ${c.env.CHITTYCONNECT_TOKEN}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             source_entity: `chittyscrape:${portalId}`,
-            focal_intensity: (result as any).focal_intensity || 1.0, 
-            ttl_days: 30, // Triggers workers/shared/focal-trust.ts exponential decay
+            focal_intensity: (result as any).focal_intensity || 1.0,
+            ttl_days: 30,
             timestamp: new Date().toISOString(),
             payload: result.data || result
           })
