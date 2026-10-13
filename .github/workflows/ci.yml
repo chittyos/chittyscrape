@@ -19,7 +19,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: rm package-lock.json && npm install
+      - run: npm install --global npm@11
+      - run: rm -f package-lock.json && npm install
       - run: npx tsc --noEmit
       - run: npm test
       - uses: actions/upload-artifact@v4
