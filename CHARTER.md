@@ -29,6 +29,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 - Browser-based scraping of property tax portals (Cook County Treasurer)
 - Authenticated portal scraping (Mr. Cooper mortgage, Peoples Gas, ComEd)
 - HOA portal scraping (AppFolio — multi-portfolio support)
+- Authenticated REI Hub accounting snapshots for downstream reconciliation (read-only portal IO)
 - Court name search across all Cook County divisions
 - Google Drive search with evidence pipeline ingestion manifests
 - Returning structured, typed JSON results from scrape operations
@@ -49,6 +50,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 |------|---------|---------|
 | Upstream | ChittyCommand | Primary caller via bridge routes and cron |
 | Upstream | ChittyRouter | Routes data requests, discovers capabilities |
+| Upstream | ChittyConnect | Brokers REI Hub and other portal credential retrieval; ChittyScrape does not own credential authority |
 | Platform | Cloudflare Browser Rendering | Headless browser instances |
 | Storage | Cloudflare KV | Service token and scrape credentials |
 | Downstream | ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
@@ -74,6 +76,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 | `/api/scrape/court-name-search` | POST | Bearer | Search Cook County courts by party name |
 | `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
 | `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
+| `/api/scrape/rei-hub` | POST | Bearer | Read REI Hub Booked Transactions and COA views into a hashed snapshot |
 
 ### Response Shape
 All scrape endpoints return: `{ success: boolean; data?: T; error?: string; method: 'scrape'; portal: string; scrapedAt: string }`
