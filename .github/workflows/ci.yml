@@ -1,7 +1,7 @@
 name: CI
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   push:
@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,11 +25,16 @@ jobs:
       - run: rm -f package-lock.json && npm install
       - run: npx tsc --noEmit
       - run: npm test
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: generated-package-lock
-          path: package-lock.json
+      - name: Commit regenerated lockfile
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name "chitty-ci[bot]"
+          git config user.email "chitty-ci[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: regenerate package lock for Vitest 4"
+            git push origin HEAD:$GITHUB_HEAD_REF
+          fi
 
   deploy:
     name: Deploy to Cloudflare
