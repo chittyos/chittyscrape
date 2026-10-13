@@ -56,7 +56,7 @@ The MCP surface is deliberately narrower than the REST scraper catalog. It expos
 - `list-scrapers` — read scraper metadata.
 - `rei-hub-snapshot` — execute the read-only REI Hub snapshot adapter.
 
-Authentication uses the existing ecosystem `ch1tty_mcp_token` through a Cloudflare Secrets Store binding named `CHITTY_MCP_TOKEN`. The secret value must never be logged, copied to KV, or committed.
+Authentication uses the existing ecosystem `ch1tty_mcp_token`, resolved at request time through ChittyConnect using the canonical broker path `services/chittymcp/service_token`. ChittyScrape does not bind, persist, or log the ChittyMCP secret value.
 
 The MCP transport is stateless JSON-RPC. It supports initialize, ping, tools list/call, empty resource/template lists, empty prompt list, and initialized notifications.
 

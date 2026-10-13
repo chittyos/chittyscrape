@@ -4,7 +4,8 @@ import { ScraperCatalog } from './catalog';
 import { renderDashboard } from './frontend';
 import { allTargets } from './targets/catalog';
 import { handleMcpRequest, type McpRequest } from './mcp';
-import { authorizeMcpBearer, type SecretValueBinding } from './mcp-auth';
+import { authorizeMcpBearer } from './mcp-auth';
+import { getChittyConnectCredential } from './chittyconnect';
 
 export type Env = {
   BROWSER: Fetcher;
@@ -21,7 +22,6 @@ export type Env = {
   BROWSE_AI_API_KEY_REF?: string;
   REIHUB_USERNAME_REF?: string;
   REIHUB_PASSWORD_REF?: string;
-  CHITTY_MCP_TOKEN?: SecretValueBinding;
 };
 
 const VERSION = '0.2.0';
@@ -59,13 +59,14 @@ app.use('*', cors({
 // Dashboard UI
 app.get('/', (c) => c.html(renderDashboard()));
 
-// Focused MCP auth. This deliberately uses the ecosystem-wide ChittyMCP bearer,
-// bound read-only from Cloudflare Secrets Store, rather than the /api/* service
-// token in SCRAPE_KV. The two trust boundaries remain separate.
+// Focused MCP auth. ChittyConnect owns credential brokering, so ChittyScrape
+// resolves the ecosystem-wide ChittyMCP bearer at point of use instead of
+// duplicating custody in this Worker. /api/* remains on its existing service
+// token boundary.
 app.use('/mcp', async (c, next) => {
   const auth = await authorizeMcpBearer(
     c.req.header('Authorization'),
-    c.env.CHITTY_MCP_TOKEN,
+    () => getChittyConnectCredential(c.env, 'services/chittymcp/service_token'),
   );
   if (!auth.ok) {
     return c.json({ error: auth.error }, auth.status);

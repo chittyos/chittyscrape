@@ -24,17 +24,20 @@ function fakeScraper(id: string, execute?: ScraperModule['execute']): ScraperMod
 }
 
 describe('focused MCP bearer auth', () => {
-  it('fails closed when the binding is missing', async () => {
-    await expect(authorizeMcpBearer('Bearer token', undefined)).resolves.toEqual({
+  it('rejects unauthenticated requests without touching the broker', async () => {
+    const resolver = vi.fn(async () => 'expected-token');
+
+    await expect(authorizeMcpBearer(undefined, resolver)).resolves.toEqual({
       ok: false,
-      status: 503,
-      error: 'auth_not_configured',
+      status: 401,
+      error: 'unauthorized',
     });
+    expect(resolver).not.toHaveBeenCalled();
   });
 
-  it('fails closed when Secrets Store is unavailable', async () => {
-    await expect(authorizeMcpBearer('Bearer token', {
-      get: async () => { throw new Error('unavailable'); },
+  it('fails closed when ChittyConnect is unavailable', async () => {
+    await expect(authorizeMcpBearer('Bearer token', async () => {
+      throw new Error('unavailable');
     })).resolves.toEqual({
       ok: false,
       status: 503,
@@ -42,23 +45,29 @@ describe('focused MCP bearer auth', () => {
     });
   });
 
-  it('rejects absent and incorrect bearer tokens', async () => {
-    const binding = { get: async () => 'expected-token' };
-
-    expect(await authorizeMcpBearer(undefined, binding)).toMatchObject({
+  it('fails closed when the broker has no ChittyMCP credential', async () => {
+    await expect(authorizeMcpBearer('Bearer token', async () => null)).resolves.toEqual({
       ok: false,
-      status: 401,
+      status: 503,
+      error: 'auth_not_configured',
     });
-    expect(await authorizeMcpBearer('Bearer wrong-token', binding)).toMatchObject({
+  });
+
+  it('rejects an incorrect bearer token', async () => {
+    expect(await authorizeMcpBearer(
+      'Bearer wrong-token',
+      async () => 'expected-token',
+    )).toMatchObject({
       ok: false,
       status: 401,
     });
   });
 
-  it('accepts the matching shared ChittyMCP bearer', async () => {
-    await expect(authorizeMcpBearer('Bearer expected-token', {
-      get: async () => 'expected-token',
-    })).resolves.toEqual({ ok: true });
+  it('accepts the matching ChittyMCP bearer returned by the broker', async () => {
+    await expect(authorizeMcpBearer(
+      'Bearer expected-token',
+      async () => 'expected-token',
+    )).resolves.toEqual({ ok: true });
   });
 });
 

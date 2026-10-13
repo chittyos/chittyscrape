@@ -28,7 +28,7 @@ Cloudflare Worker at scrape.chitty.cc with Browser Rendering binding for headles
 - **Auth**: Bearer token from KV (`SCRAPE_KV`)
 - **Credentials**: ChittyConnect-brokered refs for supported authenticated portals; SCRAPE_KV retains the service bearer and legacy portal credentials pending migration
 - **Pattern**: Catalog-driven `ScraperModule` interface (`meta` + `execute()`)
-- **MCP**: Stateless JSON-RPC over `/mcp`, authenticated with the shared ChittyMCP bearer bound from Cloudflare Secrets Store
+- **MCP**: Stateless JSON-RPC over `/mcp`; the shared ChittyMCP bearer is resolved at request time through ChittyConnect (`services/chittymcp/service_token`), not stored in ChittyScrape
 
 ### Scrape Targets
 | Portal ID | Target | Input |
