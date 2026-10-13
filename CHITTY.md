@@ -40,6 +40,7 @@ Cloudflare Worker at scrape.chitty.cc with Browser Rendering binding for headles
 | `court-name-search` | Cook County courts (by name) | `{ name, divisions? }` |
 | `appfolio-hoa` | AppFolio HOA portals | `{ portfolio }` |
 | `google-drive` | Google Drive search | `{ query, mimeType?, folderId?, flagForIngestion? }` |
+| `rei-hub` | REI Hub accounting snapshot | `{ maxPages?, includeChartOfAccounts? }` |
 
 ## Three Aspects (TY VY RY)
 
@@ -68,6 +69,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 |---------|---------|
 | ChittyCommand | Primary caller via bridge routes and cron |
 | ChittyRouter | Routes data requests, discovers capabilities |
+| ChittyConnect | Brokers credential retrieval for REI Hub and other authenticated portals |
 | Cloudflare Browser Rendering | Headless browser instances |
 | Cloudflare KV | Service token and scrape credentials |
 | ChittyEvidence | Evidence ingestion via `gdrive_sync` manifest |
@@ -89,6 +91,7 @@ Source: `chittycanon://gov/governance#three-aspects`
 | `/api/scrape/court-name-search` | POST | Bearer | Search Cook County courts by party name |
 | `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
 | `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
+| `/api/scrape/rei-hub` | POST | Bearer | Read REI Hub Booked Transactions and COA views into a hashed snapshot |
 
 ## Document Triad
 
