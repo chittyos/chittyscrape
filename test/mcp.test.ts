@@ -227,4 +227,59 @@ describe('focused ChittyScrape MCP protocol', () => {
     expect(result.body?.result.isError).toBe(true);
     expect(result.body?.result.content[0].text).toContain('credentials unavailable');
   });
+  it('rejects invalid tool arguments before executing the credentialed scraper', async () => {
+    const execute = vi.fn(async () => ({
+      success: true, method: 'scrape' as const, portal: 'rei-hub',
+      scrapedAt: '2026-10-13T00:00:00.000Z',
+    }));
+    const catalog = new ScraperCatalog();
+    catalog.register(fakeScraper('rei-hub', execute));
+    const invalid = [
+      null, [], 'bad', 7, true,
+      { maxPages: 0 }, { maxPages: 251 }, { maxPages: -1 },
+      { maxPages: 2.5 }, { maxPages: '2' }, { maxPages: null },
+      { maxPages: true }, { includeChartOfAccounts: 'false' },
+      { includeChartOfAccounts: 1 }, { includeChartOfAccounts: null },
+      { unexpected: true }, { maxPages: 1, unexpected: true },
+    ];
+    for (const args of invalid) {
+      const response = await handleMcpRequest({
+        jsonrpc: '2.0', id: 123, method: 'tools/call',
+        params: { name: 'rei-hub-snapshot', arguments: args },
+      }, catalog, {} as Fetcher, {});
+      expect(response.status).toBe(400);
+      expect(response.body?.error.code).toBe(-32602);
+    }
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('accepts valid pagination boundaries and boolean values', async () => {
+    const execute = vi.fn(async () => ({
+      success: true, method: 'scrape' as const, portal: 'rei-hub',
+      scrapedAt: '2026-10-13T00:00:00.000Z',
+    }));
+    const catalog = new ScraperCatalog();
+    catalog.register(fakeScraper('rei-hub', execute));
+    for (const args of [
+      {}, { maxPages: 1, includeChartOfAccounts: false },
+      { maxPages: 250, includeChartOfAccounts: true },
+    ]) {
+      const response = await handleMcpRequest({
+        jsonrpc: '2.0', id: 124, method: 'tools/call',
+        params: { name: 'rei-hub-snapshot', arguments: args },
+      }, catalog, {} as Fetcher, {});
+      expect(response.status).toBe(200);
+      expect(response.body?.result.isError).toBe(false);
+    }
+    expect(execute).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects unexpected list-scrapers arguments', async () => {
+    const response = await handleMcpRequest({
+      jsonrpc: '2.0', id: 125, method: 'tools/call',
+      params: { name: 'list-scrapers', arguments: { extra: 1 } },
+    }, new ScraperCatalog(), {} as Fetcher, {});
+    expect(response.body?.error.code).toBe(-32602);
+  });
+
 });
