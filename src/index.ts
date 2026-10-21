@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { ScraperCatalog } from './catalog';
 import { renderDashboard } from './frontend';
 import { allTargets } from './targets/catalog';
-import { handleMcpRequest, type McpRequest } from './mcp';
+import { getMcpManifest, handleMcpRequest, type McpRequest } from './mcp';
 import { authorizeMcpBearer } from './mcp-auth';
 import { getChittyConnectCredential } from './chittyconnect';
 
@@ -58,6 +58,10 @@ app.use('*', cors({
 
 // Dashboard UI
 app.get('/', (c) => c.html(renderDashboard()));
+
+// Static Code Mode discovery metadata. This contains schemas only; execution
+// remains authenticated at POST /mcp.
+app.get('/mcp/manifest', (c) => c.json(getMcpManifest()));
 
 // Focused MCP auth. ChittyConnect owns credential brokering, so ChittyScrape
 // resolves the ecosystem-wide ChittyMCP bearer at point of use instead of

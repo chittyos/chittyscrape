@@ -79,6 +79,7 @@ Provide stateless browser automation for the ChittyOS ecosystem, scraping portal
 | `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
 | `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
 | `/api/scrape/rei-hub` | POST | Bearer | Read REI Hub Booked Transactions and COA views into a hashed snapshot |
+| `/mcp/manifest` | GET | No | Static Code Mode tool metadata; no data or authority |
 | `/mcp` | POST | ChittyMCP bearer | Focused stateless MCP: `list-scrapers`, `rei-hub-snapshot` |
 
 ### Response Shape

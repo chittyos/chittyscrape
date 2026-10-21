@@ -23,6 +23,8 @@ const CAPABILITIES = {
   prompts: {},
 };
 
+const CODE_MODE_CANON = 'chittycanon://gov/governance#core-types';
+
 export const MCP_TOOLS = [
   {
     name: 'list-scrapers',
@@ -177,4 +179,48 @@ export async function handleMcpRequest(
         body: rpcError(body.id, -32601, `Method not found: ${body.method}`),
       };
   }
+}
+
+
+export function getMcpManifest() {
+  const metadata: Record<string, {
+    tool_id: string;
+    ontology_type: 'L' | 'E';
+    side_effect: 'read' | 'external';
+    cost_class: 'cheap' | 'expensive';
+    idempotent: boolean;
+    latency_budget_ms: number;
+  }> = {
+    'list-scrapers': {
+      tool_id: 'scrape_l_list_scrapers',
+      ontology_type: 'L',
+      side_effect: 'read',
+      cost_class: 'cheap',
+      idempotent: true,
+      latency_budget_ms: 1000,
+    },
+    'rei-hub-snapshot': {
+      tool_id: 'scrape_e_rei_hub_snapshot',
+      ontology_type: 'E',
+      side_effect: 'external',
+      cost_class: 'expensive',
+      idempotent: true,
+      latency_budget_ms: 60000,
+    },
+  };
+
+  return {
+    name: SERVER_INFO.name,
+    version: SERVER_INFO.version,
+    canon: CODE_MODE_CANON,
+    ontology_type: 'E' as const,
+    domain: 'scrape.chitty.cc',
+    tools: MCP_TOOLS.map((tool) => ({
+      ...metadata[tool.name],
+      name: tool.name,
+      description: tool.description,
+      input_schema: tool.inputSchema,
+    })),
+    generated_at: new Date().toISOString(),
+  };
 }
