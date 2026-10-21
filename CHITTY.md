@@ -94,7 +94,8 @@ Source: `chittycanon://gov/governance#three-aspects`
 | `/api/scrape/appfolio-hoa` | POST | Bearer | Scrape AppFolio HOA portals |
 | `/api/scrape/google-drive` | POST | Bearer | Search Google Drive, flag for evidence ingestion |
 | `/api/scrape/rei-hub` | POST | Bearer | Read REI Hub Booked Transactions and COA views into a hashed snapshot |
-| `/mcp/manifest` | GET | No | Static Code Mode discovery metadata |\n| `/mcp` | POST | ChittyMCP bearer | Focused MCP tools: `list-scrapers`, `rei-hub-snapshot` |
+| `/mcp/manifest` | GET | No | Static Code Mode discovery metadata |
+| `/mcp` | POST | ChittyMCP bearer | Focused MCP tools: `list-scrapers`, `rei-hub-snapshot` |
 
 ## Document Triad
 
