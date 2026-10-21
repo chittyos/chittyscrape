@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ScraperCatalog } from '../src/catalog';
 import { authorizeMcpBearer } from '../src/mcp-auth';
-import { handleMcpRequest } from '../src/mcp';
+import { getMcpManifest, handleMcpRequest } from '../src/mcp';
 import type { ScraperModule } from '../src/targets/base';
 
 function fakeScraper(id: string, execute?: ScraperModule['execute']): ScraperModule {
@@ -68,6 +68,25 @@ describe('focused MCP bearer auth', () => {
       'Bearer expected-token',
       async () => 'expected-token',
     )).resolves.toEqual({ ok: true });
+  });
+});
+
+describe('Code Mode manifest', () => {
+  it('publishes only static metadata for the focused tools', () => {
+    const manifest = getMcpManifest();
+    expect(manifest.name).toBe('chittyscrape');
+    expect(manifest.domain).toBe('scrape.chitty.cc');
+    expect(manifest.tools.map((tool) => tool.name)).toEqual([
+      'list-scrapers',
+      'rei-hub-snapshot',
+    ]);
+    expect(manifest.tools.find((tool) => tool.name === 'rei-hub-snapshot')).toMatchObject({
+      side_effect: 'external',
+      idempotent: true,
+      ontology_type: 'E',
+    });
+    expect(JSON.stringify(manifest)).not.toContain('token');
+    expect(JSON.stringify(manifest)).not.toContain('password');
   });
 });
 
