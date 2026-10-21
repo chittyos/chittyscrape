@@ -50,7 +50,9 @@ Both refs are dereferenced through ChittyConnect. Never hardcode account credent
 
 ## MCP Surface
 
-Discovery: `GET /mcp/manifest` (static schemas only).\n\nExecution: `POST /mcp`.
+Discovery: `GET /mcp/manifest` (static schemas only).
+
+Execution: `POST /mcp`.
 
 The MCP surface is deliberately narrower than the REST scraper catalog. It exposes:
 - `list-scrapers` — read scraper metadata.
