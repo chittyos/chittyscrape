@@ -69,6 +69,30 @@ function textContent(value: unknown) {
   return [{ type: 'text', text: JSON.stringify(value) }];
 }
 
+function validateToolArguments(name: string, value: unknown): string | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return 'Tool arguments must be a JSON object';
+  }
+  const args = value as Record<string, unknown>;
+  const permitted = name === 'rei-hub-snapshot'
+    ? ['maxPages', 'includeChartOfAccounts']
+    : [];
+  for (const key of Object.keys(args)) {
+    if (!permitted.includes(key)) return `Unexpected tool argument: ${key}`;
+  }
+  if (name === 'rei-hub-snapshot') {
+    if (args.maxPages !== undefined && (
+      typeof args.maxPages !== 'number' ||
+      !Number.isInteger(args.maxPages) ||
+      args.maxPages < 1 || args.maxPages > 250
+    )) return 'maxPages must be an integer between 1 and 250';
+    if (args.includeChartOfAccounts !== undefined &&
+      typeof args.includeChartOfAccounts !== 'boolean'
+    ) return 'includeChartOfAccounts must be a boolean';
+  }
+  return null;
+}
+
 export async function handleMcpRequest(
   body: McpRequest,
   catalog: ScraperCatalog,
@@ -116,9 +140,16 @@ export async function handleMcpRequest(
 
     case 'tools/call': {
       const name = body.params?.name;
-      const args = body.params?.arguments ?? {};
+      const args = body.params?.arguments === undefined ? {} : body.params.arguments;
       if (!name) {
         return { status: 400, body: rpcError(body.id, -32602, 'Missing tool name') };
+      }
+
+      if (name === 'list-scrapers' || name === 'rei-hub-snapshot') {
+        const validationError = validateToolArguments(name, args);
+        if (validationError) {
+          return { status: 400, body: rpcError(body.id, -32602, validationError) };
+        }
       }
 
       if (name === 'list-scrapers') {
