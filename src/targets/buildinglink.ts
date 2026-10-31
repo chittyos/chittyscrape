@@ -129,12 +129,16 @@ export const buildinglinkScraper: ScraperModule<BuildingLinkInput, BuildingLinkD
 
   async execute(browser, env, input) {
     const action = (input?.action || 'status') as BuildingLinkAction;
-    const buildingKey = input?.building?.trim().toLowerCase() || '';
+    const buildingKey = typeof input?.building === 'string' ? input.building.trim().toLowerCase() : '';
     const payload = input?.payload || {};
     const mode = input?.mode || 'dry_run';
 
     // --- Gate 1: known building ---
-    const building = BUILDINGS[buildingKey];
+    // Own-property lookup: an inherited name ("constructor", "toString") must not
+    // resolve to a truthy prototype member and slip past this gate.
+    const building = Object.prototype.hasOwnProperty.call(BUILDINGS, buildingKey)
+      ? BUILDINGS[buildingKey]
+      : undefined;
     if (!building) {
       return refuse(buildingKey, action, 'unknown_building',
         `Unknown building "${buildingKey}". Available: ${Object.keys(BUILDINGS).join(', ')}`);

@@ -93,6 +93,33 @@ describe('buildinglink gates', () => {
     expect(['blocked_unverified_route', 'dry_run']).toContain(r.data?.state);
   });
 
+  // Regression: CodeRabbit findings on chittyos/chittyscrape#33
+  it('gate 1: a non-string building refuses instead of throwing', async () => {
+    for (const bad of [42, null, {}, [], true]) {
+      const r = await run({ building: bad, action: 'status' });
+      expect(r.success).toBe(false);
+      expect(r.data?.state).toBe('unknown_building');
+    }
+  });
+
+  it('gate 1: an inherited key does not resolve to a prototype member', async () => {
+    for (const key of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
+      const r = await run({ building: key, action: 'status' });
+      expect(r.success).toBe(false);
+      expect(r.data?.state).toBe('unknown_building');
+    }
+  });
+
+  it('gate 1: an inherited key reads no credentials from KV', async () => {
+    const seen: string[] = [];
+    const spy = { SCRAPE_KV: { get: async (k: string) => { seen.push(k); return null; } } } as any;
+    await run({ building: 'constructor', action: 'status' }, spy);
+    await run({ building: 'constructor', action: 'send_message',
+      mode: 'execute', idempotency_key: 'k',
+      payload: { recipient: 'x', body: 'y', confirm: true } }, spy);
+    expect(seen).toEqual([]);
+  });
+
   it('flags the evidence-bearing read modules', async () => {
     const r = await run({ building: 'clarendon', action: 'status' });
     const evidence = (r.data?.modules || []).filter((m: any) => m.evidence).map((m: any) => m.action);
