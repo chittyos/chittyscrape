@@ -38,7 +38,6 @@ const PORTFOLIOS: Record<string, { subdomain: string; credPrefix: string; label:
     subdomain: 'propertyhill',
     credPrefix: 'appfolio-propertyhill',
     label: 'Property Hill (550 W Surf - Commodore)',
-    // 1Password: op://ARIBIA LLC/Commodore Condo Association Portal
   },
   'chicagoland': {
     subdomain: 'chicagolandcommunitymanagement',
