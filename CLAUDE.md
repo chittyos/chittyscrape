@@ -85,13 +85,13 @@ Two mechanisms are in use. Check which one a target uses before adding keys.
 | `appfolio-hoa` | KV | `appfolio-propertyhill:username`, `appfolio-propertyhill:password`, `appfolio-chicagoland:username`, `appfolio-chicagoland:password` |
 | `buildinglink` | KV | `buildinglink-clarendon:username`, `buildinglink-clarendon:password`, `buildinglink-commodore:username`, `buildinglink-commodore:password` |
 | `browse-ai` | ChittyConnect | `BROWSE_AI_API_KEY_REF` |
-| `firecrawl` | see note | `FIRECRAWL_API_KEY` |
+| `firecrawl` | input, else env | `FIRECRAWL_API_KEY` |
 | `google-drive` | KV | `google-drive:service-account-key` |
 | `rei-hub` | ChittyConnect | `REIHUB_USERNAME_REF`, `REIHUB_PASSWORD_REF` |
 
 - **SCRAPE_KV** — per-portal keys read directly from the KV namespace.
 - **ChittyConnect** — resolved at runtime through the broker (`src/chittyconnect.ts`), which requires `CHITTYCONNECT_TOKEN` or `CHITTYCONNECT_API_KEY`.
-- **firecrawl** is the exception: it reads neither `SCRAPE_KV` nor ChittyConnect. It declares `FIRECRAWL_API_KEY` and also accepts an optional `apiKey` on its input, so the key arrives per-call or from an env binding. Confirm the precedence in `src/targets/firecrawl.ts` before relying on either.
+- **firecrawl** is the exception: it reads neither `SCRAPE_KV` nor ChittyConnect. `src/targets/firecrawl.ts` resolves the key as `input.apiKey || env.FIRECRAWL_API_KEY || ''` — a caller-supplied key wins, the `FIRECRAWL_API_KEY` env binding is the fallback. If neither is set the key is empty and the `Authorization` header is omitted, so the request goes out unauthenticated rather than failing; expect a 401 from Firecrawl rather than a clear local error.
 
 Some ChittyConnect refs still use the legacy `op://vault/item/field` form. `resolveCredential` keeps a 404 fallback that rewrites those into a broker path, so they work but are **not** the shape for new integrations — use the canonical broker path instead. Nothing here reads 1Password directly.
 
