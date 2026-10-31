@@ -73,7 +73,7 @@ const BUILDINGS: Record<string, { subdomain: string; credPrefix: string; label: 
 };
 
 /** Read modules. `verified` gates execution; `evidence` marks retention-worthy surfaces. */
-const READS: Record<BuildingLinkRead, { path: string; verified: boolean; evidence: boolean }> = {
+export const READS: Record<BuildingLinkRead, { path: string; verified: boolean; evidence: boolean }> = {
   list_announcements:        { path: '/V2/Tenant/Announcements/List.aspx',        verified: false, evidence: true  },
   list_documents:            { path: '/V2/Tenant/Library/Documents.aspx',         verified: false, evidence: true  },
   list_maintenance_requests: { path: '/V2/Tenant/MaintenanceRequests/List.aspx',  verified: false, evidence: true  },
@@ -85,7 +85,7 @@ const READS: Record<BuildingLinkRead, { path: string; verified: boolean; evidenc
 };
 
 /** Write modules. `reverses: null` means no portal-side undo — requires confirm:true. */
-const WRITES: Record<BuildingLinkWrite, {
+export const WRITES: Record<BuildingLinkWrite, {
   path: string; verified: boolean; requires: string[]; snapshot: BuildingLinkRead | null; reverses: string | null;
 }> = {
   submit_maintenance_request: { path: '/V2/Tenant/MaintenanceRequests/New.aspx', verified: false, requires: ['unit', 'category', 'summary'], snapshot: 'list_maintenance_requests', reverses: 'cancel_maintenance_request' },

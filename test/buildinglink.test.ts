@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { buildinglinkScraper } from '../src/targets/buildinglink';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { buildinglinkScraper, WRITES } from '../src/targets/buildinglink';
 
 const KV = (creds: Record<string, string>) => ({
   SCRAPE_KV: { get: async (k: string) => creds[k] ?? null },
@@ -86,12 +86,6 @@ describe('buildinglink gates', () => {
     expect(byAction.create_reservation).toBe(false);
   });
 
-  it('defaults writes to dry_run rather than executing', async () => {
-    const r = await run({ building: 'clarendon', action: 'send_message',
-      payload: { recipient: 'Kenny Martin', body: 'hi' } });
-    expect(r.data?.state).not.toBe('transport_not_implemented');
-    expect(['blocked_unverified_route', 'dry_run']).toContain(r.data?.state);
-  });
 
   // Regression: CodeRabbit findings on chittyos/chittyscrape#33
   it('gate 1: a non-string building refuses instead of throwing', async () => {
@@ -126,5 +120,67 @@ describe('buildinglink gates', () => {
     expect(evidence).toEqual([
       'list_announcements', 'list_documents', 'list_maintenance_requests',
     ]);
+  });
+});
+
+// Gates 5-7 and the terminal branch are unreachable while every route ships
+// verified:false. Flip one route inside the seam so the real execute() path is
+// exercised, then restore it — the shipped default stays false.
+describe('buildinglink write gates (verified-route seam)', () => {
+  const RESV = { ...WRITES.create_reservation };
+  const MSG = { ...WRITES.send_message };
+  beforeEach(() => {
+    WRITES.create_reservation.verified = true;
+    WRITES.send_message.verified = true;
+  });
+  afterEach(() => {
+    WRITES.create_reservation.verified = RESV.verified;
+    WRITES.send_message.verified = MSG.verified;
+  });
+
+  const booking = { amenity: 'freight elevator', startsAt: '2026-11-03T09:00', endsAt: '2026-11-03T13:00' };
+
+  it('ships both routes as verified:false', () => {
+    expect(RESV.verified).toBe(false);
+    expect(MSG.verified).toBe(false);
+  });
+
+  it('gate 5: defaults to dry_run and returns the intent without sending', async () => {
+    const r = await run({ building: 'clarendon', action: 'create_reservation', payload: booking });
+    expect(r.data?.state).toBe('dry_run');
+    expect(r.data?.intent).toMatchObject({ action: 'create_reservation', fields: booking });
+  });
+
+  it('gate 6: execute without an idempotency_key is refused', async () => {
+    const r = await run({ building: 'clarendon', action: 'create_reservation',
+      mode: 'execute', payload: booking });
+    expect(r.data?.state).toBe('refused_no_idempotency_key');
+  });
+
+  it('gate 7: an irreversible write without confirm is refused', async () => {
+    const r = await run({ building: 'clarendon', action: 'send_message',
+      mode: 'execute', idempotency_key: 'k1',
+      payload: { recipient: 'Kenny Martin', body: 'hi' } });
+    expect(r.data?.state).toBe('refused_unconfirmed_irreversible');
+  });
+
+  it('a reversible write needs no confirm and reaches the transport boundary', async () => {
+    const r = await run({ building: 'clarendon', action: 'create_reservation',
+      mode: 'execute', idempotency_key: 'k2', payload: booking });
+    expect(r.data?.state).toBe('transport_not_implemented');
+  });
+
+  it('all gates passing still sends nothing — transport is unimplemented', async () => {
+    const r = await run({ building: 'clarendon', action: 'send_message',
+      mode: 'execute', idempotency_key: 'k3',
+      payload: { recipient: 'Kenny Martin', body: 'hi', confirm: true } });
+    expect(r.success).toBe(false);
+    expect(r.data?.state).toBe('transport_not_implemented');
+  });
+
+  it('gate 2 still precedes the write gates when credentials are absent', async () => {
+    const r = await run({ building: 'commodore', action: 'create_reservation',
+      mode: 'execute', idempotency_key: 'k4', payload: booking }, KV({}));
+    expect(r.data?.state).toBe('credentials_missing');
   });
 });
